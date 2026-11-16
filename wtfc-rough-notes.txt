@@ -1,0 +1,24 @@
+Commit 3 :
+- squad of first 12 T20 ranked teams are populated
+- playing 11 can be chosen before playing the match
+- while choosing playing 11, their roles like bolwer, all-rounder, etc. are mentioned.
+  the opening bowlers like 1st and 2nd can be chosen
+- before start of the innings the opening batters and bowlers can be changed
+- batting position can be swapped instead of one position up or down
+- bowling style is mentioned while picking the next bowler 
+- fast bowlers can no longer have stumping wickets (instead they will be converted to wicketkeeper catch)
+- when choosing the next bowler, if wicket-keeper is select he is prompted to be replaced by another player
+  as keeper for that matach. If the other player chosen is a keeper, he remains as the keeper for the rest
+  of the match, and any stumpings or keeper catch happens it goes to his name. But if the swapped player is
+  not a keeper, then he immediatley switches after the end of the over, 
+  as the original keeper gets back to keeping.
+- during 2nd innings the CRR, RRR and match equation are shown
+- bowler suggestion removed. suggested next bowler suggestion causes the bowling order 
+  to be shown wrongly in bowling scorecard.
+- In live match tab, after every over give the over summary like : 1 1 2 . . W 6 | 10 runs, 1 wicket
+- next bowler should be shown in spells, and if the bowler to be suggested has already completed his over quota,
+  go for the random bowler/ all-rounder, and not batsman.
+
+
+To Do : 
+

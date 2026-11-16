@@ -10,6 +10,18 @@ export type DismissalType =
 
 export type ExtrasType = 'WIDE' | 'NO_BALL' | 'BYE' | 'LEG_BYE' | null;
 
+export type BowlingStyle =
+  | 'RF'   // Right-arm Fast
+  | 'RFM'  // Right-arm Fast-Medium
+  | 'RM'   // Right-arm Medium
+  | 'LF'   // Left-arm Fast
+  | 'LFM'  // Left-arm Fast-Medium
+  | 'LM'   // Left-arm Medium
+  | 'OB'   // Right-arm Off-Break
+  | 'LB'   // Right-arm Leg-Break
+  | 'SLA'  // Slow Left-arm Orthodox
+  | 'LWS'; // Left-arm Wrist Spin
+
 export interface PlayerBattingStats {
   runs: number;
   balls: number;
@@ -25,7 +37,7 @@ export interface PlayerBattingStats {
 
 export interface PlayerBowlingStats {
   runsConceded: number;
-  overs: number; // e.g., 3.4 represents 3 overs and 4 balls
+  overs: number;
   ballsBowled: number;
   maidens: number;
   wickets: number;
@@ -36,6 +48,7 @@ export interface Player {
   teamId: string;
   name: string;
   role: 'BATTER' | 'BOWLER' | 'ALL_ROUNDER' | 'WICKETKEEPER';
+  bowlingStyle?: BowlingStyle;
   isCaptain?: boolean;
   isWicketkeeper?: boolean;
   batting: PlayerBattingStats;
@@ -45,7 +58,7 @@ export interface Player {
 export interface Team {
   id: string;
   name: string;
-  shortName: string; // e.g., "IND", "AUS", "CSK"
+  shortName: string;
   captainId?: string;
   wicketkeeperId?: string;
 }
@@ -66,7 +79,7 @@ export interface BatterInningsCard {
   fours: number;
   sixes: number;
   isOut: boolean;
-  dismissalText?: string; // e.g., "c Kohli b Starc"
+  dismissalText?: string;
 }
 
 export interface BowlerInningsCard {
@@ -77,7 +90,7 @@ export interface BowlerInningsCard {
   maidens: number;
   runsConceded: number;
   wickets: number;
-  currentOverRuns: number; // Helper to detect maidens at over end
+  currentOverRuns: number;
 }
 
 export interface Innings {
@@ -90,21 +103,23 @@ export interface Innings {
   ballsInCurrentOver: number;
   target?: number;
   extras: Extras;
-  drsRemaining: number; // 2 for T20/ODI, 3 for TEST
+  drsRemaining: number;
   battingCard: Record<string, BatterInningsCard>;
   bowlingCard: Record<string, BowlerInningsCard>;
-  battingOrder: string[]; // Ordered list of player IDs
+  battingOrder: string[];
+  bowlingOrder: string[]; // Preserves chronological order in which bowlers came on
+  activeWicketkeeperId: string; // Tracks who is currently keeping wickets
 }
 
 export interface BallEvent {
-  id?: number; // Auto-incremented by Dexie
+  id?: number;
   matchId: string;
   inningsNumber: number;
   over: number;
   ball: number;
   batsmanId: string;
   bowlerId: string;
-  runs: number; // Runs off the bat
+  runs: number;
   extrasType: ExtrasType;
   extraRuns: number;
   isWicket: boolean;
@@ -120,9 +135,9 @@ export interface MatchState {
   strikerId: string;
   nonStrikerId: string;
   currentBowlerId: string;
-  previousBowlerId?: string; // Enforces "no consecutive overs" rule
+  previousBowlerId?: string;
   currentOver: number;
-  currentBall: number; // 0 to 5 legal deliveries
+  currentBall: number;
   totalRuns: number;
   wickets: number;
   target?: number;
@@ -141,7 +156,11 @@ export interface Match {
   teamBId: string;
   playingXIA: string[];
   playingXIB: string[];
-  totalOvers: number; // 20, 50, or 90/unlimited for Test
+  openingBowlersA: [string, string]; // [1st Bowler, 2nd Bowler] for Team A
+  openingBowlersB: [string, string]; // [1st Bowler, 2nd Bowler] for Team B
+  wicketkeeperAId: string;
+  wicketkeeperBId: string;
+  totalOvers: number;
   allowSuperOver: boolean;
   infiniteSuperOvers: boolean;
   status: 'SETUP' | 'LIVE' | 'COMPLETED' | 'TIED';
@@ -174,4 +193,23 @@ export interface Tournament {
   pointsTable: PointsTableEntry[];
   status: 'ACTIVE' | 'COMPLETED';
   createdAt: number;
+}
+
+export interface Innings {
+  inningsNumber: 1 | 2 | 3 | 4;
+  battingTeamId: string;
+  bowlingTeamId: string;
+  runs: number;
+  wickets: number;
+  overs: number;
+  ballsInCurrentOver: number;
+  target?: number;
+  extras: Extras;
+  drsRemaining: number;
+  battingCard: Record<string, BatterInningsCard>;
+  bowlingCard: Record<string, BowlerInningsCard>;
+  battingOrder: string[];
+  bowlingOrder: string[];
+  activeWicketkeeperId: string;
+  standInReturnKeeperId?: string; // Set only when a non-keeper temporarily takes the gloves for 1 over
 }
