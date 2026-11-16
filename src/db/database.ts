@@ -38,6 +38,7 @@ export function createEmptyPlayer(
   flags?: {
     isCaptain?: boolean;
     isWicketkeeper?: boolean;
+    isOverseas?: boolean;
     bowlingStyle?: BowlingStyle;
   }
 ): Player {
@@ -49,6 +50,7 @@ export function createEmptyPlayer(
     bowlingStyle: flags?.bowlingStyle ?? 'RM',
     isCaptain: flags?.isCaptain ?? false,
     isWicketkeeper: flags?.isWicketkeeper ?? false,
+    isOverseas: flags?.isOverseas ?? false,
     batting: {
       runs: 0,
       balls: 0,
@@ -71,20 +73,43 @@ export function createEmptyPlayer(
   };
 }
 
-export async function seedInitialDataIfEmpty(): Promise<void> {
+let seedingPromise: Promise<void> | null = null;
+
+export function seedInitialDataIfEmpty(): Promise<void> {
+  if (seedingPromise) return seedingPromise;
+  seedingPromise = runSeed().finally(() => {
+    seedingPromise = null;
+  });
+  return seedingPromise;
+}
+
+async function runSeed(): Promise<void> {
   const teams: Team[] = [
-    { id: 'team_ind', name: 'India', shortName: 'IND', captainId: 'ind_1', wicketkeeperId: 'ind_3' },
-    { id: 'team_nz', name: 'New Zealand', shortName: 'NZ', captainId: 'nz_1', wicketkeeperId: 'nz_3' },
-    { id: 'team_aus', name: 'Australia', shortName: 'AUS', captainId: 'aus_1', wicketkeeperId: 'aus_3' },
-    { id: 'team_eng', name: 'England', shortName: 'ENG', captainId: 'eng_1', wicketkeeperId: 'eng_3' },
-    { id: 'team_sa', name: 'South Africa', shortName: 'SA', captainId: 'sa_1', wicketkeeperId: 'sa_3' },
-    { id: 'team_wi', name: 'West Indies', shortName: 'WI', captainId: 'wi_1', wicketkeeperId: 'wi_2' },
-    { id: 'team_pak', name: 'Pakistan', shortName: 'PAK', captainId: 'pak_1', wicketkeeperId: 'pak_3' },
-    { id: 'team_sl', name: 'Sri Lanka', shortName: 'SL', captainId: 'sl_1', wicketkeeperId: 'sl_2' },
-    { id: 'team_afg', name: 'Afghanistan', shortName: 'AFG', captainId: 'afg_1', wicketkeeperId: 'afg_2' },
-    { id: 'team_ban', name: 'Bangladesh', shortName: 'BAN', captainId: 'ban_1', wicketkeeperId: 'ban_2' },
-    { id: 'team_ire', name: 'Ireland', shortName: 'IRE', captainId: 'ire_1', wicketkeeperId: 'ire_3' },
-    { id: 'team_zim', name: 'Zimbabwe', shortName: 'ZIM', captainId: 'zim_1', wicketkeeperId: 'zim_3' },
+    // 12 ICC T20I International Teams
+    { id: 'team_ind', name: 'India', shortName: 'IND', category: 'INTERNATIONAL', captainId: 'ind_1', wicketkeeperId: 'ind_3' },
+    { id: 'team_nz', name: 'New Zealand', shortName: 'NZ', category: 'INTERNATIONAL', captainId: 'nz_1', wicketkeeperId: 'nz_3' },
+    { id: 'team_aus', name: 'Australia', shortName: 'AUS', category: 'INTERNATIONAL', captainId: 'aus_1', wicketkeeperId: 'aus_3' },
+    { id: 'team_eng', name: 'England', shortName: 'ENG', category: 'INTERNATIONAL', captainId: 'eng_1', wicketkeeperId: 'eng_3' },
+    { id: 'team_sa', name: 'South Africa', shortName: 'SA', category: 'INTERNATIONAL', captainId: 'sa_1', wicketkeeperId: 'sa_3' },
+    { id: 'team_wi', name: 'West Indies', shortName: 'WI', category: 'INTERNATIONAL', captainId: 'wi_1', wicketkeeperId: 'wi_2' },
+    { id: 'team_pak', name: 'Pakistan', shortName: 'PAK', category: 'INTERNATIONAL', captainId: 'pak_1', wicketkeeperId: 'pak_3' },
+    { id: 'team_sl', name: 'Sri Lanka', shortName: 'SL', category: 'INTERNATIONAL', captainId: 'sl_1', wicketkeeperId: 'sl_2' },
+    { id: 'team_afg', name: 'Afghanistan', shortName: 'AFG', category: 'INTERNATIONAL', captainId: 'afg_1', wicketkeeperId: 'afg_2' },
+    { id: 'team_ban', name: 'Bangladesh', shortName: 'BAN', category: 'INTERNATIONAL', captainId: 'ban_1', wicketkeeperId: 'ban_2' },
+    { id: 'team_ire', name: 'Ireland', shortName: 'IRE', category: 'INTERNATIONAL', captainId: 'ire_1', wicketkeeperId: 'ire_3' },
+    { id: 'team_zim', name: 'Zimbabwe', shortName: 'ZIM', category: 'INTERNATIONAL', captainId: 'zim_1', wicketkeeperId: 'zim_3' },
+
+    // 10 IPL Franchises (22-Member Squads)
+    { id: 'ipl_rcb', name: 'Royal Challengers Bengaluru', shortName: 'RCB', category: 'IPL', captainId: 'rcb_3', wicketkeeperId: 'rcb_1' },
+    { id: 'ipl_gt', name: 'Gujarat Titans', shortName: 'GT', category: 'IPL', captainId: 'gt_1', wicketkeeperId: 'gt_3' },
+    { id: 'ipl_csk', name: 'Chennai Super Kings', shortName: 'CSK', category: 'IPL', captainId: 'csk_1', wicketkeeperId: 'csk_2' },
+    { id: 'ipl_mi', name: 'Mumbai Indians', shortName: 'MI', category: 'IPL', captainId: 'mi_5', wicketkeeperId: 'mi_2' },
+    { id: 'ipl_kkr', name: 'Kolkata Knight Riders', shortName: 'KKR', category: 'IPL', captainId: 'kkr_1', wicketkeeperId: 'kkr_2' },
+    { id: 'ipl_srh', name: 'Sunrisers Hyderabad', shortName: 'SRH', category: 'IPL', captainId: 'srh_8', wicketkeeperId: 'srh_3' },
+    { id: 'ipl_rr', name: 'Rajasthan Royals', shortName: 'RR', category: 'IPL', captainId: 'rr_4', wicketkeeperId: 'rr_3' },
+    { id: 'ipl_dc', name: 'Delhi Capitals', shortName: 'DC', category: 'IPL', captainId: 'dc_6', wicketkeeperId: 'dc_1' },
+    { id: 'ipl_pbks', name: 'Punjab Kings', shortName: 'PBKS', category: 'IPL', captainId: 'pbks_3', wicketkeeperId: 'pbks_2' },
+    { id: 'ipl_lsg', name: 'Lucknow Super Giants', shortName: 'LSG', category: 'IPL', captainId: 'lsg_4', wicketkeeperId: 'lsg_4' },
   ];
 
   const players: Player[] = [
@@ -293,33 +318,314 @@ export async function seedInitialDataIfEmpty(): Promise<void> {
     createEmptyPlayer('zim_13', 'team_zim', 'Trevor Gwandu', 'BOWLER', { bowlingStyle: 'RFM' }),
     createEmptyPlayer('zim_14', 'team_zim', 'Tinotenda Maposa', 'BOWLER', { bowlingStyle: 'RFM' }),
     createEmptyPlayer('zim_15', 'team_zim', 'Brandon Mavuta', 'BOWLER', { bowlingStyle: 'LB' }),
+
+    // ================= IPL 2026 FRANCHISES (22-MEMBER SQUADS) =================
+    // 1. Royal Challengers Bengaluru
+    createEmptyPlayer('rcb_1', 'ipl_rcb', 'Phil Salt', 'WICKETKEEPER', { isWicketkeeper: true, isOverseas: true, bowlingStyle: 'RM' }),
+    createEmptyPlayer('rcb_2', 'ipl_rcb', 'Virat Kohli', 'BATTER', { bowlingStyle: 'RM' }),
+    createEmptyPlayer('rcb_3', 'ipl_rcb', 'Rajat Patidar', 'BATTER', { isCaptain: true, bowlingStyle: 'OB' }),
+    createEmptyPlayer('rcb_4', 'ipl_rcb', 'Venkatesh Iyer', 'ALL_ROUNDER', { bowlingStyle: 'RM' }),
+    createEmptyPlayer('rcb_5', 'ipl_rcb', 'Devdutt Padikkal', 'BATTER', { bowlingStyle: 'OB' }),
+    createEmptyPlayer('rcb_6', 'ipl_rcb', 'Jitesh Sharma', 'WICKETKEEPER', { isWicketkeeper: true, bowlingStyle: 'RM' }),
+    createEmptyPlayer('rcb_7', 'ipl_rcb', 'Tim David', 'BATTER', { isOverseas: true, bowlingStyle: 'OB' }),
+    createEmptyPlayer('rcb_8', 'ipl_rcb', 'Krunal Pandya', 'ALL_ROUNDER', { bowlingStyle: 'SLA' }),
+    createEmptyPlayer('rcb_9', 'ipl_rcb', 'Bhuvneshwar Kumar', 'BOWLER', { bowlingStyle: 'RFM' }),
+    createEmptyPlayer('rcb_10', 'ipl_rcb', 'Josh Hazlewood', 'BOWLER', { isOverseas: true, bowlingStyle: 'RFM' }),
+    createEmptyPlayer('rcb_11', 'ipl_rcb', 'Jacob Duffy', 'BOWLER', { isOverseas: true, bowlingStyle: 'RFM' }),
+    createEmptyPlayer('rcb_12', 'ipl_rcb', 'Romario Shepherd', 'ALL_ROUNDER', { isOverseas: true, bowlingStyle: 'RFM' }),
+    createEmptyPlayer('rcb_13', 'ipl_rcb', 'Jacob Bethell', 'ALL_ROUNDER', { isOverseas: true, bowlingStyle: 'SLA' }),
+    createEmptyPlayer('rcb_14', 'ipl_rcb', 'Nuwan Thushara', 'BOWLER', { isOverseas: true, bowlingStyle: 'RFM' }),
+    createEmptyPlayer('rcb_15', 'ipl_rcb', 'Jordan Cox', 'WICKETKEEPER', { isWicketkeeper: true, isOverseas: true, bowlingStyle: 'RM' }),
+    createEmptyPlayer('rcb_16', 'ipl_rcb', 'Yash Dayal', 'BOWLER', { bowlingStyle: 'LFM' }),
+    createEmptyPlayer('rcb_17', 'ipl_rcb', 'Suyash Sharma', 'BOWLER', { bowlingStyle: 'LB' }),
+    createEmptyPlayer('rcb_18', 'ipl_rcb', 'Rasikh Salam', 'BOWLER', { bowlingStyle: 'RFM' }),
+    createEmptyPlayer('rcb_19', 'ipl_rcb', 'Swapnil Singh', 'ALL_ROUNDER', { bowlingStyle: 'SLA' }),
+    createEmptyPlayer('rcb_20', 'ipl_rcb', 'Kanishk Chouhan', 'ALL_ROUNDER', { bowlingStyle: 'OB' }),
+    createEmptyPlayer('rcb_21', 'ipl_rcb', 'Abhinandan Singh', 'BOWLER', { bowlingStyle: 'RFM' }),
+    createEmptyPlayer('rcb_22', 'ipl_rcb', 'Vicky Ostwal', 'ALL_ROUNDER', { bowlingStyle: 'SLA' }),
+
+    // 2. Gujarat Titans
+    createEmptyPlayer('gt_1', 'ipl_gt', 'Shubman Gill', 'BATTER', { isCaptain: true, bowlingStyle: 'OB' }),
+    createEmptyPlayer('gt_2', 'ipl_gt', 'Sai Sudharsan', 'BATTER', { bowlingStyle: 'LB' }),
+    createEmptyPlayer('gt_3', 'ipl_gt', 'Jos Buttler', 'WICKETKEEPER', { isWicketkeeper: true, isOverseas: true, bowlingStyle: 'RM' }),
+    createEmptyPlayer('gt_4', 'ipl_gt', 'Washington Sundar', 'ALL_ROUNDER', { bowlingStyle: 'OB' }),
+    createEmptyPlayer('gt_5', 'ipl_gt', 'Shahrukh Khan', 'BATTER', { bowlingStyle: 'OB' }),
+    createEmptyPlayer('gt_6', 'ipl_gt', 'Rahul Tewatia', 'ALL_ROUNDER', { bowlingStyle: 'LB' }),
+    createEmptyPlayer('gt_7', 'ipl_gt', 'Jason Holder', 'ALL_ROUNDER', { isOverseas: true, bowlingStyle: 'RFM' }),
+    createEmptyPlayer('gt_8', 'ipl_gt', 'Rashid Khan', 'ALL_ROUNDER', { isOverseas: true, bowlingStyle: 'LB' }),
+    createEmptyPlayer('gt_9', 'ipl_gt', 'Kagiso Rabada', 'BOWLER', { isOverseas: true, bowlingStyle: 'RF' }),
+    createEmptyPlayer('gt_10', 'ipl_gt', 'Mohammed Siraj', 'BOWLER', { bowlingStyle: 'RF' }),
+    createEmptyPlayer('gt_11', 'ipl_gt', 'Prasidh Krishna', 'BOWLER', { bowlingStyle: 'RFM' }),
+    createEmptyPlayer('gt_12', 'ipl_gt', 'Glenn Phillips', 'ALL_ROUNDER', { isOverseas: true, bowlingStyle: 'OB' }),
+    createEmptyPlayer('gt_13', 'ipl_gt', 'Tom Banton', 'WICKETKEEPER', { isWicketkeeper: true, isOverseas: true, bowlingStyle: 'RM' }),
+    createEmptyPlayer('gt_14', 'ipl_gt', 'Luke Wood', 'BOWLER', { isOverseas: true, bowlingStyle: 'LFM' }),
+    createEmptyPlayer('gt_15', 'ipl_gt', 'Connor Esterhuizen', 'WICKETKEEPER', { isWicketkeeper: true, isOverseas: true, bowlingStyle: 'RM' }),
+    createEmptyPlayer('gt_16', 'ipl_gt', 'Sai Kishore', 'BOWLER', { bowlingStyle: 'SLA' }),
+    createEmptyPlayer('gt_17', 'ipl_gt', 'Arshad Khan', 'ALL_ROUNDER', { bowlingStyle: 'LFM' }),
+    createEmptyPlayer('gt_18', 'ipl_gt', 'Anuj Rawat', 'WICKETKEEPER', { isWicketkeeper: true, bowlingStyle: 'RM' }),
+    createEmptyPlayer('gt_19', 'ipl_gt', 'Kumar Kushagra', 'WICKETKEEPER', { isWicketkeeper: true, bowlingStyle: 'RM' }),
+    createEmptyPlayer('gt_20', 'ipl_gt', 'Nishant Sindhu', 'ALL_ROUNDER', { bowlingStyle: 'SLA' }),
+    createEmptyPlayer('gt_21', 'ipl_gt', 'Manav Suthar', 'BOWLER', { bowlingStyle: 'SLA' }),
+    createEmptyPlayer('gt_22', 'ipl_gt', 'Ishant Sharma', 'BOWLER', { bowlingStyle: 'RFM' }),
+
+    // 3. Chennai Super Kings
+    createEmptyPlayer('csk_1', 'ipl_csk', 'Ruturaj Gaikwad', 'BATTER', { isCaptain: true, bowlingStyle: 'OB' }),
+    createEmptyPlayer('csk_2', 'ipl_csk', 'Sanju Samson', 'WICKETKEEPER', { isWicketkeeper: true, bowlingStyle: 'RM' }),
+    createEmptyPlayer('csk_3', 'ipl_csk', 'Dewald Brevis', 'BATTER', { isOverseas: true, bowlingStyle: 'LB' }),
+    createEmptyPlayer('csk_4', 'ipl_csk', 'Shivam Dube', 'ALL_ROUNDER', { bowlingStyle: 'RM' }),
+    createEmptyPlayer('csk_5', 'ipl_csk', 'Matthew Short', 'ALL_ROUNDER', { isOverseas: true, bowlingStyle: 'OB' }),
+    createEmptyPlayer('csk_6', 'ipl_csk', 'MS Dhoni', 'WICKETKEEPER', { isWicketkeeper: true, bowlingStyle: 'RM' }),
+    createEmptyPlayer('csk_7', 'ipl_csk', 'Anshul Kamboj', 'ALL_ROUNDER', { bowlingStyle: 'RFM' }),
+    createEmptyPlayer('csk_8', 'ipl_csk', 'Noor Ahmad', 'BOWLER', { isOverseas: true, bowlingStyle: 'LWS' }),
+    createEmptyPlayer('csk_9', 'ipl_csk', 'Matt Henry', 'BOWLER', { isOverseas: true, bowlingStyle: 'RFM' }),
+    createEmptyPlayer('csk_10', 'ipl_csk', 'Khaleel Ahmed', 'BOWLER', { bowlingStyle: 'LFM' }),
+    createEmptyPlayer('csk_11', 'ipl_csk', 'Rahul Chahar', 'BOWLER', { bowlingStyle: 'LB' }),
+    createEmptyPlayer('csk_12', 'ipl_csk', 'Nathan Ellis', 'BOWLER', { isOverseas: true, bowlingStyle: 'RFM' }),
+    createEmptyPlayer('csk_13', 'ipl_csk', 'Akeal Hosein', 'BOWLER', { isOverseas: true, bowlingStyle: 'SLA' }),
+    createEmptyPlayer('csk_14', 'ipl_csk', 'Jamie Overton', 'ALL_ROUNDER', { isOverseas: true, bowlingStyle: 'RF' }),
+    createEmptyPlayer('csk_15', 'ipl_csk', 'Zak Foulkes', 'ALL_ROUNDER', { isOverseas: true, bowlingStyle: 'RFM' }),
+    createEmptyPlayer('csk_16', 'ipl_csk', 'Sarfaraz Khan', 'BATTER', { bowlingStyle: 'LB' }),
+    createEmptyPlayer('csk_17', 'ipl_csk', 'Urvil Patel', 'WICKETKEEPER', { isWicketkeeper: true, bowlingStyle: 'RM' }),
+    createEmptyPlayer('csk_18', 'ipl_csk', 'Prashant Veer', 'ALL_ROUNDER', { bowlingStyle: 'SLA' }),
+    createEmptyPlayer('csk_19', 'ipl_csk', 'Kartik Sharma', 'WICKETKEEPER', { isWicketkeeper: true, bowlingStyle: 'RM' }),
+    createEmptyPlayer('csk_20', 'ipl_csk', 'Mukesh Choudhary', 'BOWLER', { bowlingStyle: 'LFM' }),
+    createEmptyPlayer('csk_21', 'ipl_csk', 'Shreyas Gopal', 'BOWLER', { bowlingStyle: 'LB' }),
+    createEmptyPlayer('csk_22', 'ipl_csk', 'Gurjapneet Singh', 'BOWLER', { bowlingStyle: 'LFM' }),
+
+    // 4. Mumbai Indians
+    createEmptyPlayer('mi_1', 'ipl_mi', 'Rohit Sharma', 'BATTER', { bowlingStyle: 'OB' }),
+    createEmptyPlayer('mi_2', 'ipl_mi', 'Ryan Rickelton', 'WICKETKEEPER', { isWicketkeeper: true, isOverseas: true, bowlingStyle: 'RM' }),
+    createEmptyPlayer('mi_3', 'ipl_mi', 'Suryakumar Yadav', 'BATTER', { bowlingStyle: 'RM' }),
+    createEmptyPlayer('mi_4', 'ipl_mi', 'Tilak Varma', 'BATTER', { bowlingStyle: 'OB' }),
+    createEmptyPlayer('mi_5', 'ipl_mi', 'Hardik Pandya', 'ALL_ROUNDER', { isCaptain: true, bowlingStyle: 'RFM' }),
+    createEmptyPlayer('mi_6', 'ipl_mi', 'Will Jacks', 'ALL_ROUNDER', { isOverseas: true, bowlingStyle: 'OB' }),
+    createEmptyPlayer('mi_7', 'ipl_mi', 'Naman Dhir', 'ALL_ROUNDER', { bowlingStyle: 'OB' }),
+    createEmptyPlayer('mi_8', 'ipl_mi', 'Mitchell Santner', 'ALL_ROUNDER', { isOverseas: true, bowlingStyle: 'SLA' }),
+    createEmptyPlayer('mi_9', 'ipl_mi', 'Deepak Chahar', 'BOWLER', { bowlingStyle: 'RFM' }),
+    createEmptyPlayer('mi_10', 'ipl_mi', 'Jasprit Bumrah', 'BOWLER', { bowlingStyle: 'RF' }),
+    createEmptyPlayer('mi_11', 'ipl_mi', 'Trent Boult', 'BOWLER', { isOverseas: true, bowlingStyle: 'LFM' }),
+    createEmptyPlayer('mi_12', 'ipl_mi', 'Quinton de Kock', 'WICKETKEEPER', { isWicketkeeper: true, isOverseas: true, bowlingStyle: 'RM' }),
+    createEmptyPlayer('mi_13', 'ipl_mi', 'Sherfane Rutherford', 'BATTER', { isOverseas: true, bowlingStyle: 'RFM' }),
+    createEmptyPlayer('mi_14', 'ipl_mi', 'Allah Ghazanfar', 'BOWLER', { isOverseas: true, bowlingStyle: 'OB' }),
+    createEmptyPlayer('mi_15', 'ipl_mi', 'Corbin Bosch', 'ALL_ROUNDER', { isOverseas: true, bowlingStyle: 'RFM' }),
+    createEmptyPlayer('mi_16', 'ipl_mi', 'Robin Minz', 'WICKETKEEPER', { isWicketkeeper: true, bowlingStyle: 'RM' }),
+    createEmptyPlayer('mi_17', 'ipl_mi', 'Shardul Thakur', 'ALL_ROUNDER', { bowlingStyle: 'RFM' }),
+    createEmptyPlayer('mi_18', 'ipl_mi', 'Raj Angad Bawa', 'ALL_ROUNDER', { bowlingStyle: 'RFM' }),
+    createEmptyPlayer('mi_19', 'ipl_mi', 'Mayank Markande', 'BOWLER', { bowlingStyle: 'LB' }),
+    createEmptyPlayer('mi_20', 'ipl_mi', 'Ashwani Kumar', 'BOWLER', { bowlingStyle: 'LFM' }),
+    createEmptyPlayer('mi_21', 'ipl_mi', 'Atharva Ankolekar', 'ALL_ROUNDER', { bowlingStyle: 'SLA' }),
+    createEmptyPlayer('mi_22', 'ipl_mi', 'Danish Malewar', 'BATTER', { bowlingStyle: 'OB' }),
+
+    // 5. Kolkata Knight Riders
+    createEmptyPlayer('kkr_1', 'ipl_kkr', 'Ajinkya Rahane', 'BATTER', { isCaptain: true, bowlingStyle: 'RM' }),
+    createEmptyPlayer('kkr_2', 'ipl_kkr', 'Tim Seifert', 'WICKETKEEPER', { isWicketkeeper: true, isOverseas: true, bowlingStyle: 'RM' }),
+    createEmptyPlayer('kkr_3', 'ipl_kkr', 'Angkrish Raghuvanshi', 'BATTER', { bowlingStyle: 'SLA' }),
+    createEmptyPlayer('kkr_4', 'ipl_kkr', 'Cameron Green', 'ALL_ROUNDER', { isOverseas: true, bowlingStyle: 'RFM' }),
+    createEmptyPlayer('kkr_5', 'ipl_kkr', 'Rinku Singh', 'BATTER', { bowlingStyle: 'OB' }),
+    createEmptyPlayer('kkr_6', 'ipl_kkr', 'Ramandeep Singh', 'ALL_ROUNDER', { bowlingStyle: 'RM' }),
+    createEmptyPlayer('kkr_7', 'ipl_kkr', 'Sunil Narine', 'ALL_ROUNDER', { isOverseas: true, bowlingStyle: 'OB' }),
+    createEmptyPlayer('kkr_8', 'ipl_kkr', 'Harshit Rana', 'BOWLER', { bowlingStyle: 'RF' }),
+    createEmptyPlayer('kkr_9', 'ipl_kkr', 'Varun Chakaravarthy', 'BOWLER', { bowlingStyle: 'LB' }),
+    createEmptyPlayer('kkr_10', 'ipl_kkr', 'Matheesha Pathirana', 'BOWLER', { isOverseas: true, bowlingStyle: 'RF' }),
+    createEmptyPlayer('kkr_11', 'ipl_kkr', 'Vaibhav Arora', 'BOWLER', { bowlingStyle: 'RFM' }),
+    createEmptyPlayer('kkr_12', 'ipl_kkr', 'Finn Allen', 'WICKETKEEPER', { isWicketkeeper: true, isOverseas: true, bowlingStyle: 'OB' }),
+    createEmptyPlayer('kkr_13', 'ipl_kkr', 'Rachin Ravindra', 'ALL_ROUNDER', { isOverseas: true, bowlingStyle: 'SLA' }),
+    createEmptyPlayer('kkr_14', 'ipl_kkr', 'Rovman Powell', 'BATTER', { isOverseas: true, bowlingStyle: 'RM' }),
+    createEmptyPlayer('kkr_15', 'ipl_kkr', 'Manish Pandey', 'BATTER', { bowlingStyle: 'RM' }),
+    createEmptyPlayer('kkr_16', 'ipl_kkr', 'Rahul Tripathi', 'BATTER', { bowlingStyle: 'RM' }),
+    createEmptyPlayer('kkr_17', 'ipl_kkr', 'Anukul Roy', 'ALL_ROUNDER', { bowlingStyle: 'SLA' }),
+    createEmptyPlayer('kkr_18', 'ipl_kkr', 'Umran Malik', 'BOWLER', { bowlingStyle: 'RF' }),
+    createEmptyPlayer('kkr_19', 'ipl_kkr', 'Akash Deep', 'BOWLER', { bowlingStyle: 'RFM' }),
+    createEmptyPlayer('kkr_20', 'ipl_kkr', 'Kartik Tyagi', 'BOWLER', { bowlingStyle: 'RF' }),
+    createEmptyPlayer('kkr_21', 'ipl_kkr', 'Tejasvi Singh', 'WICKETKEEPER', { isWicketkeeper: true, bowlingStyle: 'RM' }),
+    createEmptyPlayer('kkr_22', 'ipl_kkr', 'Prashant Solanki', 'BOWLER', { bowlingStyle: 'LB' }),
+
+    // 6. Sunrisers Hyderabad
+    createEmptyPlayer('srh_1', 'ipl_srh', 'Travis Head', 'BATTER', { isOverseas: true, bowlingStyle: 'OB' }),
+    createEmptyPlayer('srh_2', 'ipl_srh', 'Abhishek Sharma', 'ALL_ROUNDER', { bowlingStyle: 'SLA' }),
+    createEmptyPlayer('srh_3', 'ipl_srh', 'Ishan Kishan', 'WICKETKEEPER', { isWicketkeeper: true, bowlingStyle: 'RM' }),
+    createEmptyPlayer('srh_4', 'ipl_srh', 'Heinrich Klaasen', 'WICKETKEEPER', { isWicketkeeper: true, isOverseas: true, bowlingStyle: 'OB' }),
+    createEmptyPlayer('srh_5', 'ipl_srh', 'Nitish Kumar Reddy', 'ALL_ROUNDER', { bowlingStyle: 'RFM' }),
+    createEmptyPlayer('srh_6', 'ipl_srh', 'Liam Livingstone', 'ALL_ROUNDER', { isOverseas: true, bowlingStyle: 'LB' }),
+    createEmptyPlayer('srh_7', 'ipl_srh', 'Aniket Verma', 'BATTER', { bowlingStyle: 'RM' }),
+    createEmptyPlayer('srh_8', 'ipl_srh', 'Pat Cummins', 'BOWLER', { isCaptain: true, isOverseas: true, bowlingStyle: 'RF' }),
+    createEmptyPlayer('srh_9', 'ipl_srh', 'Harshal Patel', 'BOWLER', { bowlingStyle: 'RFM' }),
+    createEmptyPlayer('srh_10', 'ipl_srh', 'Mohammed Shami', 'BOWLER', { bowlingStyle: 'RF' }),
+    createEmptyPlayer('srh_11', 'ipl_srh', 'Jaydev Unadkat', 'BOWLER', { bowlingStyle: 'LFM' }),
+    createEmptyPlayer('srh_12', 'ipl_srh', 'Kamindu Mendis', 'ALL_ROUNDER', { isOverseas: true, bowlingStyle: 'OB' }),
+    createEmptyPlayer('srh_13', 'ipl_srh', 'Brydon Carse', 'BOWLER', { isOverseas: true, bowlingStyle: 'RF' }),
+    createEmptyPlayer('srh_14', 'ipl_srh', 'Eshan Malinga', 'BOWLER', { isOverseas: true, bowlingStyle: 'RFM' }),
+    createEmptyPlayer('srh_15', 'ipl_srh', 'Abhinav Manohar', 'BATTER', { bowlingStyle: 'LB' }),
+    createEmptyPlayer('srh_16', 'ipl_srh', 'Smaran Ravichandran', 'BATTER', { bowlingStyle: 'OB' }),
+    createEmptyPlayer('srh_17', 'ipl_srh', 'Salil Arora', 'WICKETKEEPER', { isWicketkeeper: true, bowlingStyle: 'RM' }),
+    createEmptyPlayer('srh_18', 'ipl_srh', 'Shivam Mavi', 'BOWLER', { bowlingStyle: 'RFM' }),
+    createEmptyPlayer('srh_19', 'ipl_srh', 'Zeeshan Ansari', 'BOWLER', { bowlingStyle: 'LB' }),
+    createEmptyPlayer('srh_20', 'ipl_srh', 'Sakib Hussain', 'BOWLER', { bowlingStyle: 'RFM' }),
+    createEmptyPlayer('srh_21', 'ipl_srh', 'Krains Fuletra', 'ALL_ROUNDER', { bowlingStyle: 'LWS' }),
+    createEmptyPlayer('srh_22', 'ipl_srh', 'Onkar Tarmale', 'BOWLER', { bowlingStyle: 'RFM' }),
+
+    // 7. Rajasthan Royals
+    createEmptyPlayer('rr_1', 'ipl_rr', 'Yashasvi Jaiswal', 'BATTER', { bowlingStyle: 'LB' }),
+    createEmptyPlayer('rr_2', 'ipl_rr', 'Vaibhav Sooryavanshi', 'BATTER', { bowlingStyle: 'SLA' }),
+    createEmptyPlayer('rr_3', 'ipl_rr', 'Dhruv Jurel', 'WICKETKEEPER', { isWicketkeeper: true, bowlingStyle: 'RM' }),
+    createEmptyPlayer('rr_4', 'ipl_rr', 'Riyan Parag', 'ALL_ROUNDER', { isCaptain: true, bowlingStyle: 'OB' }),
+    createEmptyPlayer('rr_5', 'ipl_rr', 'Shimron Hetmyer', 'BATTER', { isOverseas: true, bowlingStyle: 'RM' }),
+    createEmptyPlayer('rr_6', 'ipl_rr', 'Ravindra Jadeja', 'ALL_ROUNDER', { bowlingStyle: 'SLA' }),
+    createEmptyPlayer('rr_7', 'ipl_rr', 'Sam Curran', 'ALL_ROUNDER', { isOverseas: true, bowlingStyle: 'LFM' }),
+    createEmptyPlayer('rr_8', 'ipl_rr', 'Jofra Archer', 'BOWLER', { isOverseas: true, bowlingStyle: 'RF' }),
+    createEmptyPlayer('rr_9', 'ipl_rr', 'Ravi Bishnoi', 'BOWLER', { bowlingStyle: 'LB' }),
+    createEmptyPlayer('rr_10', 'ipl_rr', 'Tushar Deshpande', 'BOWLER', { bowlingStyle: 'RFM' }),
+    createEmptyPlayer('rr_11', 'ipl_rr', 'Sandeep Sharma', 'BOWLER', { bowlingStyle: 'RFM' }),
+    createEmptyPlayer('rr_12', 'ipl_rr', 'Nandre Burger', 'BOWLER', { isOverseas: true, bowlingStyle: 'LF' }),
+    createEmptyPlayer('rr_13', 'ipl_rr', 'Kwena Maphaka', 'BOWLER', { isOverseas: true, bowlingStyle: 'LF' }),
+    createEmptyPlayer('rr_14', 'ipl_rr', 'Adam Milne', 'BOWLER', { isOverseas: true, bowlingStyle: 'RF' }),
+    createEmptyPlayer('rr_15', 'ipl_rr', 'Donovan Ferreira', 'WICKETKEEPER', { isWicketkeeper: true, isOverseas: true, bowlingStyle: 'OB' }),
+    createEmptyPlayer('rr_16', 'ipl_rr', 'Shubham Dubey', 'BATTER', { bowlingStyle: 'OB' }),
+    createEmptyPlayer('rr_17', 'ipl_rr', 'Yudhvir Singh', 'ALL_ROUNDER', { bowlingStyle: 'RFM' }),
+    createEmptyPlayer('rr_18', 'ipl_rr', 'Kuldeep Sen', 'BOWLER', { bowlingStyle: 'RF' }),
+    createEmptyPlayer('rr_19', 'ipl_rr', 'Vignesh Puthur', 'BOWLER', { bowlingStyle: 'LWS' }),
+    createEmptyPlayer('rr_20', 'ipl_rr', 'Sushant Mishra', 'BOWLER', { bowlingStyle: 'LFM' }),
+    createEmptyPlayer('rr_21', 'ipl_rr', 'Brijesh Sharma', 'BOWLER', { bowlingStyle: 'RFM' }),
+    createEmptyPlayer('rr_22', 'ipl_rr', 'Yash Raj Punia', 'BOWLER', { bowlingStyle: 'LB' }),
+
+    // 8. Delhi Capitals
+    createEmptyPlayer('dc_1', 'ipl_dc', 'KL Rahul', 'WICKETKEEPER', { isWicketkeeper: true, bowlingStyle: 'RM' }),
+    createEmptyPlayer('dc_2', 'ipl_dc', 'Pathum Nissanka', 'BATTER', { isOverseas: true, bowlingStyle: 'RM' }),
+    createEmptyPlayer('dc_3', 'ipl_dc', 'Abishek Porel', 'WICKETKEEPER', { isWicketkeeper: true, bowlingStyle: 'RM' }),
+    createEmptyPlayer('dc_4', 'ipl_dc', 'Tristan Stubbs', 'WICKETKEEPER', { isWicketkeeper: true, isOverseas: true, bowlingStyle: 'OB' }),
+    createEmptyPlayer('dc_5', 'ipl_dc', 'David Miller', 'BATTER', { isOverseas: true, bowlingStyle: 'OB' }),
+    createEmptyPlayer('dc_6', 'ipl_dc', 'Axar Patel', 'ALL_ROUNDER', { isCaptain: true, bowlingStyle: 'SLA' }),
+    createEmptyPlayer('dc_7', 'ipl_dc', 'Ashutosh Sharma', 'BATTER', { bowlingStyle: 'RM' }),
+    createEmptyPlayer('dc_8', 'ipl_dc', 'Vipraj Nigam', 'ALL_ROUNDER', { bowlingStyle: 'LB' }),
+    createEmptyPlayer('dc_9', 'ipl_dc', 'Mitchell Starc', 'BOWLER', { isOverseas: true, bowlingStyle: 'LF' }),
+    createEmptyPlayer('dc_10', 'ipl_dc', 'Kuldeep Yadav', 'BOWLER', { bowlingStyle: 'LWS' }),
+    createEmptyPlayer('dc_11', 'ipl_dc', 'T. Natarajan', 'BOWLER', { bowlingStyle: 'LFM' }),
+    createEmptyPlayer('dc_12', 'ipl_dc', 'Lungi Ngidi', 'BOWLER', { isOverseas: true, bowlingStyle: 'RF' }),
+    createEmptyPlayer('dc_13', 'ipl_dc', 'Dushmantha Chameera', 'BOWLER', { isOverseas: true, bowlingStyle: 'RF' }),
+    createEmptyPlayer('dc_14', 'ipl_dc', 'Kyle Jamieson', 'BOWLER', { isOverseas: true, bowlingStyle: 'RFM' }),
+    createEmptyPlayer('dc_15', 'ipl_dc', 'Rehan Ahmed', 'ALL_ROUNDER', { isOverseas: true, bowlingStyle: 'LB' }),
+    createEmptyPlayer('dc_16', 'ipl_dc', 'Nitish Rana', 'ALL_ROUNDER', { bowlingStyle: 'OB' }),
+    createEmptyPlayer('dc_17', 'ipl_dc', 'Karun Nair', 'BATTER', { bowlingStyle: 'OB' }),
+    createEmptyPlayer('dc_18', 'ipl_dc', 'Sameer Rizvi', 'BATTER', { bowlingStyle: 'OB' }),
+    createEmptyPlayer('dc_19', 'ipl_dc', 'Mukesh Kumar', 'BOWLER', { bowlingStyle: 'RFM' }),
+    createEmptyPlayer('dc_20', 'ipl_dc', 'Auqib Dar', 'ALL_ROUNDER', { bowlingStyle: 'RFM' }),
+    createEmptyPlayer('dc_21', 'ipl_dc', 'Prithvi Shaw', 'BATTER', { bowlingStyle: 'OB' }),
+    createEmptyPlayer('dc_22', 'ipl_dc', 'Ajay Mandal', 'ALL_ROUNDER', { bowlingStyle: 'SLA' }),
+
+    // 9. Punjab Kings
+    createEmptyPlayer('pbks_1', 'ipl_pbks', 'Priyansh Arya', 'BATTER', { bowlingStyle: 'SLA' }),
+    createEmptyPlayer('pbks_2', 'ipl_pbks', 'Prabhsimran Singh', 'WICKETKEEPER', { isWicketkeeper: true, bowlingStyle: 'RM' }),
+    createEmptyPlayer('pbks_3', 'ipl_pbks', 'Shreyas Iyer', 'BATTER', { isCaptain: true, bowlingStyle: 'OB' }),
+    createEmptyPlayer('pbks_4', 'ipl_pbks', 'Nehal Wadhera', 'BATTER', { bowlingStyle: 'LB' }),
+    createEmptyPlayer('pbks_5', 'ipl_pbks', 'Marcus Stoinis', 'ALL_ROUNDER', { isOverseas: true, bowlingStyle: 'RM' }),
+    createEmptyPlayer('pbks_6', 'ipl_pbks', 'Shashank Singh', 'ALL_ROUNDER', { bowlingStyle: 'RM' }),
+    createEmptyPlayer('pbks_7', 'ipl_pbks', 'Marco Jansen', 'ALL_ROUNDER', { isOverseas: true, bowlingStyle: 'LF' }),
+    createEmptyPlayer('pbks_8', 'ipl_pbks', 'Azmatullah Omarzai', 'ALL_ROUNDER', { isOverseas: true, bowlingStyle: 'RFM' }),
+    createEmptyPlayer('pbks_9', 'ipl_pbks', 'Harpreet Brar', 'BOWLER', { bowlingStyle: 'SLA' }),
+    createEmptyPlayer('pbks_10', 'ipl_pbks', 'Arshdeep Singh', 'BOWLER', { bowlingStyle: 'LFM' }),
+    createEmptyPlayer('pbks_11', 'ipl_pbks', 'Yuzvendra Chahal', 'BOWLER', { bowlingStyle: 'LB' }),
+    createEmptyPlayer('pbks_12', 'ipl_pbks', 'Lockie Ferguson', 'BOWLER', { isOverseas: true, bowlingStyle: 'RF' }),
+    createEmptyPlayer('pbks_13', 'ipl_pbks', 'Xavier Bartlett', 'BOWLER', { isOverseas: true, bowlingStyle: 'RFM' }),
+    createEmptyPlayer('pbks_14', 'ipl_pbks', 'Mitch Owen', 'ALL_ROUNDER', { isOverseas: true, bowlingStyle: 'RM' }),
+    createEmptyPlayer('pbks_15', 'ipl_pbks', 'Cooper Connolly', 'ALL_ROUNDER', { isOverseas: true, bowlingStyle: 'SLA' }),
+    createEmptyPlayer('pbks_16', 'ipl_pbks', 'Ben Dwarshuis', 'BOWLER', { isOverseas: true, bowlingStyle: 'LFM' }),
+    createEmptyPlayer('pbks_17', 'ipl_pbks', 'Vishnu Vinod', 'WICKETKEEPER', { isWicketkeeper: true, bowlingStyle: 'RM' }),
+    createEmptyPlayer('pbks_18', 'ipl_pbks', 'Vijaykumar Vyshak', 'BOWLER', { bowlingStyle: 'RFM' }),
+    createEmptyPlayer('pbks_19', 'ipl_pbks', 'Yash Thakur', 'BOWLER', { bowlingStyle: 'RFM' }),
+    createEmptyPlayer('pbks_20', 'ipl_pbks', 'Suryansh Shedge', 'ALL_ROUNDER', { bowlingStyle: 'RFM' }),
+    createEmptyPlayer('pbks_21', 'ipl_pbks', 'Musheer Khan', 'ALL_ROUNDER', { bowlingStyle: 'SLA' }),
+    createEmptyPlayer('pbks_22', 'ipl_pbks', 'Pravin Dubey', 'BOWLER', { bowlingStyle: 'LB' }),
+
+    // 10. Lucknow Super Giants
+    createEmptyPlayer('lsg_1', 'ipl_lsg', 'Mitchell Marsh', 'ALL_ROUNDER', { isOverseas: true, bowlingStyle: 'RFM' }),
+    createEmptyPlayer('lsg_2', 'ipl_lsg', 'Aiden Markram', 'ALL_ROUNDER', { isOverseas: true, bowlingStyle: 'OB' }),
+    createEmptyPlayer('lsg_3', 'ipl_lsg', 'Nicholas Pooran', 'WICKETKEEPER', { isWicketkeeper: true, isOverseas: true, bowlingStyle: 'OB' }),
+    createEmptyPlayer('lsg_4', 'ipl_lsg', 'Rishabh Pant', 'WICKETKEEPER', { isCaptain: true, isWicketkeeper: true, bowlingStyle: 'RM' }),
+    createEmptyPlayer('lsg_5', 'ipl_lsg', 'Ayush Badoni', 'ALL_ROUNDER', { bowlingStyle: 'OB' }),
+    createEmptyPlayer('lsg_6', 'ipl_lsg', 'Abdul Samad', 'BATTER', { bowlingStyle: 'LB' }),
+    createEmptyPlayer('lsg_7', 'ipl_lsg', 'Shahbaz Ahmed', 'ALL_ROUNDER', { bowlingStyle: 'SLA' }),
+    createEmptyPlayer('lsg_8', 'ipl_lsg', 'Mayank Yadav', 'BOWLER', { bowlingStyle: 'RF' }),
+    createEmptyPlayer('lsg_9', 'ipl_lsg', 'Mohammed Shami', 'BOWLER', { bowlingStyle: 'RF' }),
+    createEmptyPlayer('lsg_10', 'ipl_lsg', 'Avesh Khan', 'BOWLER', { bowlingStyle: 'RFM' }),
+    createEmptyPlayer('lsg_11', 'ipl_lsg', 'Digvesh Rathi', 'BOWLER', { bowlingStyle: 'LB' }),
+    createEmptyPlayer('lsg_12', 'ipl_lsg', 'Wanindu Hasaranga', 'ALL_ROUNDER', { isOverseas: true, bowlingStyle: 'LB' }),
+    createEmptyPlayer('lsg_13', 'ipl_lsg', 'Anrich Nortje', 'BOWLER', { isOverseas: true, bowlingStyle: 'RF' }),
+    createEmptyPlayer('lsg_14', 'ipl_lsg', 'Josh Inglis', 'WICKETKEEPER', { isWicketkeeper: true, isOverseas: true, bowlingStyle: 'RM' }),
+    createEmptyPlayer('lsg_15', 'ipl_lsg', 'Mohsin Khan', 'BOWLER', { bowlingStyle: 'LFM' }),
+    createEmptyPlayer('lsg_16', 'ipl_lsg', 'Prince Yadav', 'BOWLER', { bowlingStyle: 'RFM' }),
+    createEmptyPlayer('lsg_17', 'ipl_lsg', 'Arjun Tendulkar', 'ALL_ROUNDER', { bowlingStyle: 'LFM' }),
+    createEmptyPlayer('lsg_18', 'ipl_lsg', 'Arshin Kulkarni', 'ALL_ROUNDER', { bowlingStyle: 'RM' }),
+    createEmptyPlayer('lsg_19', 'ipl_lsg', 'M. Siddharth', 'BOWLER', { bowlingStyle: 'SLA' }),
+    createEmptyPlayer('lsg_20', 'ipl_lsg', 'Akash Singh', 'BOWLER', { bowlingStyle: 'LFM' }),
+    createEmptyPlayer('lsg_21', 'ipl_lsg', 'Naman Tiwari', 'BOWLER', { bowlingStyle: 'LFM' }),
+    createEmptyPlayer('lsg_22', 'ipl_lsg', 'Himmat Singh', 'BATTER', { bowlingStyle: 'OB' }),
   ];
 
   await db.transaction('rw', db.teams, db.players, async () => {
     const existingTeams = await db.teams.toArray();
-    const existingTeamIds = new Set(existingTeams.map((t) => t.id));
-    const missingTeams = teams.filter((t) => !existingTeamIds.has(t.id));
+    const existingTeamMap = new Map(existingTeams.map((t) => [t.id, t]));
+    const missingTeams: Team[] = [];
+    const updatedTeams: Team[] = [];
 
-    if (missingTeams.length > 0) {
-      await db.teams.bulkAdd(missingTeams);
+    for (const t of teams) {
+      const existing = existingTeamMap.get(t.id);
+      if (!existing) {
+        missingTeams.push(t);
+      } else if (!existing.category && t.category) {
+        updatedTeams.push({ ...existing, category: t.category });
+      }
     }
 
+    if (missingTeams.length > 0) await db.teams.bulkPut(missingTeams);
+    if (updatedTeams.length > 0) await db.teams.bulkPut(updatedTeams);
+
     const existingPlayers = await db.players.toArray();
-    const existingPlayerMap = new Map(existingPlayers.map((p) => [p.id, p]));
+
+    // Purge any accidental duplicate player rows within the same team
+    const seenTeamNameKeys = new Set<string>();
+    const duplicateIdsToDelete: string[] = [];
+    const existingPlayerMap = new Map<string, Player>();
+
+    for (const ep of existingPlayers) {
+      const dedupeKey = `${ep.teamId}::${ep.name.toLowerCase()}`;
+      if (seenTeamNameKeys.has(dedupeKey)) {
+        duplicateIdsToDelete.push(ep.id);
+      } else {
+        seenTeamNameKeys.add(dedupeKey);
+        existingPlayerMap.set(ep.id, ep);
+      }
+    }
+
+    if (duplicateIdsToDelete.length > 0) {
+      await db.players.bulkDelete(duplicateIdsToDelete);
+    }
+
     const newPlayers: Player[] = [];
     const updatedPlayers: Player[] = [];
 
     for (const p of players) {
       const existing = existingPlayerMap.get(p.id);
       if (!existing) {
-        newPlayers.push(p);
-      } else if (!existing.bowlingStyle && p.bowlingStyle) {
-        // Backfill bowlingStyle onto already-seeded players without touching stats
-        updatedPlayers.push({ ...existing, bowlingStyle: p.bowlingStyle });
+        const dedupeKey = `${p.teamId}::${p.name.toLowerCase()}`;
+        if (!seenTeamNameKeys.has(dedupeKey)) {
+          seenTeamNameKeys.add(dedupeKey);
+          newPlayers.push(p);
+        }
+      } else {
+        const needsStyle = !existing.bowlingStyle && p.bowlingStyle;
+        const needsOverseas =
+          existing.isOverseas === undefined && p.isOverseas !== undefined;
+        if (needsStyle || needsOverseas) {
+          updatedPlayers.push({
+            ...existing,
+            bowlingStyle: existing.bowlingStyle ?? p.bowlingStyle,
+            isOverseas: existing.isOverseas ?? p.isOverseas,
+          });
+        }
       }
     }
 
-    if (newPlayers.length > 0) await db.players.bulkAdd(newPlayers);
+    if (newPlayers.length > 0) await db.players.bulkPut(newPlayers);
     if (updatedPlayers.length > 0) await db.players.bulkPut(updatedPlayers);
   });
 }

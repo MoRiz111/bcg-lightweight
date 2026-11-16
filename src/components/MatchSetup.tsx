@@ -1,6 +1,9 @@
 import { useEffect, useState } from 'react';
 import { createEmptyPlayer, db } from '../db/database';
-import { startQuickMatch } from '../engine/matchEngine';
+import {
+  buildBalancedPlayingXI,
+  startQuickMatch,
+} from '../engine/matchEngine';
 import type { MatchFormat, Player, Team } from '../types/cricket';
 
 interface MatchSetupProps {
@@ -45,13 +48,11 @@ export function MatchSetup({
   const [xiA, setXiA] = useState<string[]>([]);
   const [xiB, setXiB] = useState<string[]>([]);
 
-  // Opening bowlers [B1, B2] & designated Wicketkeeper for BOTH teams
   const [openBowlersA, setOpenBowlersA] = useState<[string, string]>(['', '']);
   const [openBowlersB, setOpenBowlersB] = useState<[string, string]>(['', '']);
   const [keeperA, setKeeperA] = useState<string>('');
   const [keeperB, setKeeperB] = useState<string>('');
 
-  // Interactive selection & two-click swap state per team column
   const [selectedActionPlayerA, setSelectedActionPlayerA] = useState<string | null>(null);
   const [swapSourceA, setSwapSourceA] = useState<string | null>(null);
 
@@ -62,20 +63,27 @@ export function MatchSetup({
     'NONE' | 'SINGLE' | 'INFINITE'
   >(defaultFormat === 'TEST' ? 'NONE' : 'SINGLE');
 
-  // JSON Team Importer state
   const [showImport, setShowImport] = useState(false);
   const [jsonInput, setJsonInput] = useState(SAMPLE_JSON_TEMPLATE);
   const [importError, setImportError] = useState<string | null>(null);
   const [importSuccess, setImportSuccess] = useState<string | null>(null);
 
+  const teamAObj = teams.find((t) => t.id === teamAId);
+  const teamBObj = teams.find((t) => t.id === teamBId);
+
+  const isTeamAIpl =
+    teamAObj?.category === 'IPL' || teamAId.startsWith('ipl_');
+  const isTeamBIpl =
+    teamBObj?.category === 'IPL' || teamBId.startsWith('ipl_');
+
   const squadA = players.filter((p) => p.teamId === teamAId);
   const squadB = players.filter((p) => p.teamId === teamBId);
 
-  const initDefaultsForSquad = (squad: Player[]) => {
-    const defaultXI = squad.slice(0, 11);
-    const bowlers = [...defaultXI]
-      .reverse()
-      .filter((p) => p.role === 'BOWLER' || p.role === 'ALL_ROUNDER');
+  const initDefaultsForSquad = (squad: Player[], enforceMax4Overseas: boolean) => {
+    const defaultXI = buildBalancedPlayingXI(squad, enforceMax4Overseas);
+    const bowlers = defaultXI.filter(
+      (p) => p.role === 'BOWLER' || p.role === 'ALL_ROUNDER'
+    );
     const b1 = bowlers[0]?.id ?? defaultXI[defaultXI.length - 1]?.id ?? '';
     const b2 = bowlers[1]?.id ?? defaultXI[defaultXI.length - 2]?.id ?? '';
     const wk =
@@ -86,7 +94,7 @@ export function MatchSetup({
   };
 
   useEffect(() => {
-    const { xiIds, b1, b2, wk } = initDefaultsForSquad(squadA);
+    const { xiIds, b1, b2, wk } = initDefaultsForSquad(squadA, isTeamAIpl);
     setXiA(xiIds);
     setOpenBowlersA([b1, b2]);
     setKeeperA(wk);
@@ -95,7 +103,7 @@ export function MatchSetup({
   }, [teamAId, players.length]);
 
   useEffect(() => {
-    const { xiIds, b1, b2, wk } = initDefaultsForSquad(squadB);
+    const { xiIds, b1, b2, wk } = initDefaultsForSquad(squadB, isTeamBIpl);
     setXiB(xiIds);
     setOpenBowlersB([b1, b2]);
     setKeeperB(wk);
@@ -103,16 +111,31 @@ export function MatchSetup({
     setSwapSourceB(null);
   }, [teamBId, players.length]);
 
+  const countOverseasInXI = (squad: Player[], xiIds: string[]) =>
+    xiIds.filter((id) => squad.find((p) => p.id === id)?.isOverseas).length;
+
   const togglePlayerInXI = (
     playerId: string,
+    squad: Player[],
     currentXI: string[],
-    setter: (ids: string[]) => void
+    setter: (ids: string[]) => void,
+    enforceMax4Overseas: boolean
   ) => {
     if (currentXI.includes(playerId)) {
       setter(currentXI.filter((id) => id !== playerId));
-    } else if (currentXI.length < 11) {
-      setter([...currentXI, playerId]);
+      return;
     }
+    if (currentXI.length >= 11) return;
+
+    const targetPlayer = squad.find((p) => p.id === playerId);
+    if (
+      enforceMax4Overseas &&
+      targetPlayer?.isOverseas &&
+      countOverseasInXI(squad, currentXI) >= 4
+    ) {
+      return;
+    }
+    setter([...currentXI, playerId]);
   };
 
   const handleImportTeam = async () => {
@@ -140,6 +163,7 @@ export function MatchSetup({
             bowlingStyle?: Player['bowlingStyle'];
             isCaptain?: boolean;
             isWicketkeeper?: boolean;
+            isOverseas?: boolean;
           },
           idx: number
         ) =>
@@ -152,6 +176,7 @@ export function MatchSetup({
               bowlingStyle: p.bowlingStyle ?? 'RM',
               isCaptain: Boolean(p.isCaptain),
               isWicketkeeper: Boolean(p.isWicketkeeper),
+              isOverseas: Boolean(p.isOverseas),
             }
           )
       );
@@ -166,6 +191,7 @@ export function MatchSetup({
         id: teamId,
         name: parsed.name,
         shortName: parsed.shortName.toUpperCase(),
+        category: parsed.category === 'IPL' ? 'IPL' : 'INTERNATIONAL',
         captainId: captain.id,
         wicketkeeperId: keeper.id,
       };
@@ -183,8 +209,21 @@ export function MatchSetup({
     }
   };
 
+  const overseasCountA = countOverseasInXI(squadA, xiA);
+  const overseasCountB = countOverseasInXI(squadB, xiB);
+  const validOverseasA = !isTeamAIpl || overseasCountA <= 4;
+  const validOverseasB = !isTeamBIpl || overseasCountB <= 4;
+
   const handleLaunchMatch = async () => {
-    if (xiA.length !== 11 || xiB.length !== 11 || teamAId === teamBId) return;
+    if (
+      xiA.length !== 11 ||
+      xiB.length !== 11 ||
+      teamAId === teamBId ||
+      !validOverseasA ||
+      !validOverseasB
+    ) {
+      return;
+    }
 
     const validB1A = xiA.includes(openBowlersA[0]) ? openBowlersA[0] : xiA[10];
     const validB2A = xiA.includes(openBowlersA[1]) ? openBowlersA[1] : xiA[9];
@@ -211,6 +250,8 @@ export function MatchSetup({
     squad: Player[],
     selectedXI: string[],
     setSelectedXI: (ids: string[]) => void,
+    enforceMax4Overseas: boolean,
+    overseasCount: number,
     openBowlers: [string, string],
     setOpenBowlers: (pair: [string, string]) => void,
     activeKeeperId: string,
@@ -221,7 +262,6 @@ export function MatchSetup({
     setSwapSourceId: (id: string | null) => void
   ) => {
     const handlePlayerRowClick = (clickedId: string) => {
-      // If currently in "Swap Mode", complete the swap with the clicked batter
       if (swapSourceId) {
         if (swapSourceId !== clickedId) {
           const idx1 = selectedXI.indexOf(swapSourceId);
@@ -237,13 +277,19 @@ export function MatchSetup({
         return;
       }
 
-      // Toggle player action menu
       setActionPlayerId(actionPlayerId === clickedId ? null : clickedId);
     };
 
+    const internationalTeams = teams.filter(
+      (t) => t.category !== 'IPL' && !t.id.startsWith('ipl_')
+    );
+    const iplTeams = teams.filter(
+      (t) => t.category === 'IPL' || t.id.startsWith('ipl_')
+    );
+
     return (
       <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4 space-y-4">
-        <div className="flex items-center justify-between gap-2">
+        <div className="flex flex-wrap items-center justify-between gap-2">
           <div>
             <span className="text-[11px] uppercase tracking-wider text-slate-400 font-semibold block">
               {label}
@@ -251,28 +297,52 @@ export function MatchSetup({
             <select
               value={teamId}
               onChange={(e) => onChangeTeam(e.target.value)}
-              className="mt-1 bg-slate-950 border border-slate-700 rounded-lg px-3 py-1.5 text-sm font-bold text-white"
+              className="mt-1 bg-slate-950 border border-slate-700 rounded-lg px-3 py-1.5 text-sm font-bold text-white max-w-[230px]"
             >
-              {teams.map((t) => (
-                <option key={t.id} value={t.id}>
-                  {t.name} ({t.shortName})
-                </option>
-              ))}
+              {iplTeams.length > 0 && (
+                <optgroup label="IPL Franchises (22-Man Squads)">
+                  {iplTeams.map((t) => (
+                    <option key={t.id} value={t.id}>
+                      {t.name} ({t.shortName})
+                    </option>
+                  ))}
+                </optgroup>
+              )}
+              <optgroup label="International Teams">
+                {internationalTeams.map((t) => (
+                  <option key={t.id} value={t.id}>
+                    {t.name} ({t.shortName})
+                  </option>
+                ))}
+              </optgroup>
             </select>
           </div>
 
-          <span
-            className={`px-2.5 py-1 rounded-lg text-xs font-bold ${
-              selectedXI.length === 11
-                ? 'bg-emerald-500/20 text-emerald-300'
-                : 'bg-amber-500/20 text-amber-300'
-            }`}
-          >
-            {selectedXI.length}/11 Selected
-          </span>
+          <div className="flex items-center gap-1.5">
+            {enforceMax4Overseas && (
+              <span
+                className={`px-2 py-1 rounded-lg text-[11px] font-bold ${
+                  overseasCount <= 4
+                    ? 'bg-sky-500/20 text-sky-300 border border-sky-500/30'
+                    : 'bg-rose-500/20 text-rose-300 border border-rose-500/40'
+                }`}
+                title="IPL Rule: Maximum 4 Overseas players allowed in Playing XI"
+              >
+                ✈ {overseasCount}/4 OS
+              </span>
+            )}
+            <span
+              className={`px-2.5 py-1 rounded-lg text-xs font-bold ${
+                selectedXI.length === 11
+                  ? 'bg-emerald-500/20 text-emerald-300'
+                  : 'bg-amber-500/20 text-amber-300'
+              }`}
+            >
+              {selectedXI.length}/11
+            </span>
+          </div>
         </div>
 
-        {/* Legend & Swap Banner */}
         <div className="flex flex-wrap items-center justify-between gap-2 text-[11px] text-slate-400 bg-slate-950/60 px-3 py-2 rounded-lg border border-slate-800/80">
           {swapSourceId ? (
             <div className="flex items-center justify-between w-full text-amber-300 font-semibold">
@@ -290,13 +360,12 @@ export function MatchSetup({
             </div>
           ) : (
             <>
-              <span>Click any player to Swap, Set Bowler (B1/B2), or Keeper</span>
-              <span>C • 🧤 • ⚾1 • ⚾2</span>
+              <span>Click player to Swap, Set Bowler, or Keeper</span>
+              <span>{enforceMax4Overseas ? '✈ OS (Max 4) • ' : ''}C • 🧤 • ⚾1/2</span>
             </>
           )}
         </div>
 
-        {/* Batting Order (Selected XI) */}
         <div className="divide-y divide-slate-800/70 bg-slate-950/60 border border-slate-800 rounded-xl overflow-hidden">
           {selectedXI.map((id, idx) => {
             const p = squad.find((pl) => pl.id === id);
@@ -319,6 +388,8 @@ export function MatchSetup({
                       ? 'hover:bg-emerald-500/10'
                       : isActionOpen
                       ? 'bg-slate-800/80'
+                      : p.isOverseas
+                      ? 'bg-sky-950/20 hover:bg-slate-900'
                       : 'hover:bg-slate-900'
                   }`}
                 >
@@ -326,9 +397,23 @@ export function MatchSetup({
                     <span className="w-5 text-slate-500 font-mono font-bold">
                       {idx + 1}.
                     </span>
-                    <span className="font-semibold text-slate-100">{p.name}</span>
+                    <span
+                      className={`font-semibold ${
+                        p.isOverseas ? 'text-sky-200' : 'text-slate-100'
+                      }`}
+                    >
+                      {p.name}
+                    </span>
 
-                    {/* Role & Bowling Style tag */}
+                    {p.isOverseas && (
+                      <span
+                        className="px-1.5 py-0.5 rounded bg-sky-500/25 text-sky-300 border border-sky-500/40 text-[10px] font-bold"
+                        title="Overseas Player"
+                      >
+                        ✈ OS
+                      </span>
+                    )}
+
                     <span className="text-[10px] px-1.5 py-0.5 rounded bg-slate-800 text-slate-400 font-mono">
                       {p.role === 'ALL_ROUNDER'
                         ? 'AR'
@@ -375,7 +460,13 @@ export function MatchSetup({
                     type="button"
                     onClick={(e) => {
                       e.stopPropagation();
-                      togglePlayerInXI(id, selectedXI, setSelectedXI);
+                      togglePlayerInXI(
+                        id,
+                        squad,
+                        selectedXI,
+                        setSelectedXI,
+                        enforceMax4Overseas
+                      );
                     }}
                     className="ml-2 px-1.5 py-0.5 rounded bg-rose-500/20 text-rose-300 hover:bg-rose-500/30 cursor-pointer"
                     title="Drop to bench"
@@ -384,7 +475,6 @@ export function MatchSetup({
                   </button>
                 </div>
 
-                {/* Inline Player Action Menu */}
                 {isActionOpen && !swapSourceId && (
                   <div className="px-3 py-2 bg-slate-900 border-t border-slate-800 flex flex-wrap gap-1.5">
                     <button
@@ -443,32 +533,62 @@ export function MatchSetup({
           })}
         </div>
 
-        {/* Bench Players */}
         {squad.length > selectedXI.length && (
           <div className="space-y-1.5">
-            <div className="text-xs uppercase tracking-wider text-slate-400 font-semibold">
-              Squad Bench (Click to add)
+            <div className="text-xs uppercase tracking-wider text-slate-400 font-semibold flex items-center justify-between">
+              <span>Squad Bench ({squad.length - selectedXI.length} players)</span>
+              {enforceMax4Overseas && overseasCount >= 4 && (
+                <span className="text-[10px] text-sky-400">
+                  4/4 Overseas slots full
+                </span>
+              )}
             </div>
             <div className="flex flex-wrap gap-1.5">
               {squad
                 .filter((p) => !selectedXI.includes(p.id))
-                .map((p) => (
-                  <button
-                    key={p.id}
-                    type="button"
-                    onClick={() =>
-                      togglePlayerInXI(p.id, selectedXI, setSelectedXI)
-                    }
-                    disabled={selectedXI.length >= 11}
-                    className="px-2.5 py-1.5 rounded-lg bg-slate-950 hover:bg-slate-800 border border-slate-800 text-xs text-slate-300 disabled:opacity-40 cursor-pointer"
-                  >
-                    + {p.name}{' '}
-                    <span className="text-slate-500">
-                      ({p.role === 'ALL_ROUNDER' ? 'AR' : p.role.slice(0, 3)}
-                      {p.bowlingStyle ? `/${p.bowlingStyle}` : ''})
-                    </span>
-                  </button>
-                ))}
+                .map((p) => {
+                  const overseasBlocked =
+                    enforceMax4Overseas && p.isOverseas && overseasCount >= 4;
+                  const isDisabled = selectedXI.length >= 11 || overseasBlocked;
+
+                  return (
+                    <button
+                      key={p.id}
+                      type="button"
+                      onClick={() =>
+                        togglePlayerInXI(
+                          p.id,
+                          squad,
+                          selectedXI,
+                          setSelectedXI,
+                          enforceMax4Overseas
+                        )
+                      }
+                      disabled={isDisabled}
+                      title={
+                        overseasBlocked
+                          ? 'Drop an overseas player from Playing XI first (Max 4 allowed)'
+                          : 'Add to Playing XI'
+                      }
+                      className={`px-2.5 py-1.5 rounded-lg border text-xs disabled:opacity-40 cursor-pointer ${
+                        p.isOverseas
+                          ? 'bg-sky-950/40 hover:bg-sky-900/50 border-sky-800/70 text-sky-200'
+                          : 'bg-slate-950 hover:bg-slate-800 border-slate-800 text-slate-300'
+                      }`}
+                    >
+                      + {p.name}{' '}
+                      {p.isOverseas && (
+                        <span className="text-[10px] font-bold text-sky-400">
+                          [✈ OS]
+                        </span>
+                      )}{' '}
+                      <span className="text-slate-500">
+                        ({p.role === 'ALL_ROUNDER' ? 'AR' : p.role.slice(0, 3)}
+                        {p.bowlingStyle ? `/${p.bowlingStyle}` : ''})
+                      </span>
+                    </button>
+                  );
+                })}
             </div>
           </div>
         )}
@@ -477,7 +597,11 @@ export function MatchSetup({
   };
 
   const valid =
-    xiA.length === 11 && xiB.length === 11 && teamAId !== teamBId;
+    xiA.length === 11 &&
+    xiB.length === 11 &&
+    teamAId !== teamBId &&
+    validOverseasA &&
+    validOverseasB;
 
   return (
     <div className="min-h-screen bg-slate-950 text-white p-4 sm:p-6 max-w-5xl mx-auto space-y-6">
@@ -485,7 +609,7 @@ export function MatchSetup({
         <div>
           <h1 className="text-2xl font-extrabold">Pre-Match Setup</h1>
           <p className="text-xs text-slate-400">
-            Select Playing XI, swap batting order, assign opening bowlers (⚾1/⚾2) & keeper
+            Select Playing XI (max 4 overseas for IPL), swap batting order, assign opening bowlers & keeper
           </p>
         </div>
 
@@ -520,7 +644,7 @@ export function MatchSetup({
               Import Custom Squad (JSON)
             </span>
             <span className="text-[11px] text-slate-400">
-              Roles: BATTER | BOWLER | ALL_ROUNDER | WICKETKEEPER
+              Optional: &quot;category&quot;: &quot;IPL&quot;, &quot;isOverseas&quot;: true
             </span>
           </div>
           <textarea
@@ -544,7 +668,6 @@ export function MatchSetup({
         </div>
       )}
 
-      {/* Format & Super Over Config */}
       <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4 grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div>
           <label className="text-[11px] uppercase tracking-wider text-slate-400 font-semibold block mb-1.5">
@@ -590,7 +713,6 @@ export function MatchSetup({
         </div>
       </div>
 
-      {/* Two-Column Squad & Lineup Builder */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {renderSquadColumn(
           'Batting First (Team A)',
@@ -599,6 +721,8 @@ export function MatchSetup({
           squadA,
           xiA,
           setXiA,
+          isTeamAIpl,
+          overseasCountA,
           openBowlersA,
           setOpenBowlersA,
           keeperA,
@@ -615,6 +739,8 @@ export function MatchSetup({
           squadB,
           xiB,
           setXiB,
+          isTeamBIpl,
+          overseasCountB,
           openBowlersB,
           setOpenBowlersB,
           keeperB,
@@ -630,6 +756,8 @@ export function MatchSetup({
         <div className="text-xs text-slate-400">
           {teamAId === teamBId
             ? 'Please select two different teams.'
+            : !validOverseasA || !validOverseasB
+            ? 'IPL Rule: Maximum 4 overseas players allowed per Playing XI.'
             : xiA.length !== 11 || xiB.length !== 11
             ? 'Both teams must have exactly 11 players selected.'
             : 'Lineups, opening bowlers (⚾1/⚾2), and keepers locked.'}

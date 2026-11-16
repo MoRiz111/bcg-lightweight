@@ -10,6 +10,129 @@ import type {
 } from '../types/cricket';
 import { rollBallOutcome, rollDrsOverturn } from './probabilities';
 
+// Extract trailing numeric index from IDs like "ind_2", "rcb_11" so natural squad order is preserved
+function getSquadIndex(playerId: string): number {
+  const match = playerId.match(/_(\d+)$/);
+  return match ? parseInt(match[1], 10) : 999;
+}
+
+// Sort a chosen Playing XI into realistic batting order:
+// Top/Middle Order: BATTER & WICKETKEEPER -> Lower-Middle: ALL_ROUNDER -> Tail End (8-11): BOWLER
+export function sortRealisticBattingOrder(xi: Player[]): Player[] {
+  const rolePriority: Record<Player['role'], number> = {
+    BATTER: 1,
+    WICKETKEEPER: 1,
+    ALL_ROUNDER: 2,
+    BOWLER: 3,
+  };
+
+  return [...xi].sort((a, b) => {
+    const pDiff = rolePriority[a.role] - rolePriority[b.role];
+    if (pDiff !== 0) return pDiff;
+    return getSquadIndex(a.id) - getSquadIndex(b.id);
+  });
+}
+
+// Picks a balanced 11-player XI (1+ WK, 4-5 Bowlers, 5-6 Batters/WK + All-Rounders, <=4 Overseas for IPL)
+export function buildBalancedPlayingXI(
+  squad: Player[],
+  isIplTeam: boolean
+): Player[] {
+  // Deduplicate squad by both ID and player name first
+  const uniqueSquad: Player[] = [];
+  const seenIds = new Set<string>();
+  const seenNames = new Set<string>();
+
+  for (const p of [...squad].sort(
+    (a, b) => getSquadIndex(a.id) - getSquadIndex(b.id)
+  )) {
+    const normName = p.name.trim().toLowerCase();
+    if (seenIds.has(p.id) || seenNames.has(normName)) continue;
+    seenIds.add(p.id);
+    seenNames.add(normName);
+    uniqueSquad.push(p);
+  }
+
+  const selected: Player[] = [];
+  const usedIds = new Set<string>();
+  const usedNames = new Set<string>();
+  let overseasCount = 0;
+
+  const canPick = (p: Player): boolean => {
+    const normName = p.name.trim().toLowerCase();
+    if (usedIds.has(p.id) || usedNames.has(normName) || selected.length >= 11) {
+      return false;
+    }
+    if (isIplTeam && p.isOverseas && overseasCount >= 4) return false;
+    return true;
+  };
+
+  const pick = (p: Player) => {
+    selected.push(p);
+    usedIds.add(p.id);
+    usedNames.add(p.name.trim().toLowerCase());
+    if (p.isOverseas) overseasCount += 1;
+  };
+
+  const keepers = uniqueSquad.filter(
+    (p) => p.role === 'WICKETKEEPER' || p.isWicketkeeper
+  );
+  const batters = uniqueSquad.filter(
+    (p) => p.role === 'BATTER' && !p.isWicketkeeper
+  );
+  const allRounders = uniqueSquad.filter((p) => p.role === 'ALL_ROUNDER');
+  const bowlers = uniqueSquad.filter((p) => p.role === 'BOWLER');
+
+  // 1. Compulsory: At least 1 Wicketkeeper
+  for (const wk of keepers) {
+    if (canPick(wk)) {
+      pick(wk);
+      break;
+    }
+  }
+
+  // 2. Specialist Bowlers: pick 4 pure bowlers (or 5 if few all-rounders exist)
+  const targetBowlers = allRounders.length >= 2 ? 4 : 5;
+  let pickedBowlers = 0;
+  for (const bowl of bowlers) {
+    if (pickedBowlers >= targetBowlers) break;
+    if (canPick(bowl)) {
+      pick(bowl);
+      pickedBowlers += 1;
+    }
+  }
+
+  // 3. Batters (including secondary WK-batters): fill up to 5-6 total batters+keepers
+  const targetBattersAndKeepers = 5;
+  for (const bat of [...batters, ...keepers]) {
+    const currentBatWkCount = selected.filter(
+      (p) => p.role === 'BATTER' || p.role === 'WICKETKEEPER'
+    ).length;
+    if (currentBatWkCount >= targetBattersAndKeepers) break;
+    if (canPick(bat)) {
+      pick(bat);
+    }
+  }
+
+  // 4. All-Rounders: fill remaining middle-order / 5th-6th bowling slots
+  for (const ar of allRounders) {
+    if (selected.length >= 11) break;
+    if (canPick(ar)) {
+      pick(ar);
+    }
+  }
+
+  // 5. Fallback fill if any role bucket was short
+  for (const p of [...batters, ...allRounders, ...bowlers, ...keepers]) {
+    if (selected.length >= 11) break;
+    if (canPick(p)) {
+      pick(p);
+    }
+  }
+
+  return sortRealisticBattingOrder(selected);
+}
+
 function buildInnings(
   inningsNumber: 1 | 2 | 3 | 4,
   battingTeamId: string,
@@ -20,8 +143,15 @@ function buildInnings(
   format: MatchFormat,
   target?: number
 ): Innings {
+  const uniqueBatXI = Array.from(
+    new Map(battingXI.map((p) => [p.id, p])).values()
+  );
+  const uniqueBowlXI = Array.from(
+    new Map(bowlingXI.map((p) => [p.id, p])).values()
+  );
+
   const battingCard: Record<string, BatterInningsCard> = {};
-  battingXI.forEach((p) => {
+  uniqueBatXI.forEach((p) => {
     battingCard[p.id] = {
       playerId: p.id,
       name: p.name,
@@ -34,7 +164,7 @@ function buildInnings(
   });
 
   const bowlingCard: Record<string, BowlerInningsCard> = {};
-  bowlingXI.forEach((p) => {
+  uniqueBowlXI.forEach((p) => {
     bowlingCard[p.id] = {
       playerId: p.id,
       name: p.name,
@@ -60,16 +190,12 @@ function buildInnings(
     drsRemaining: format === 'TEST' ? 3 : 2,
     battingCard,
     bowlingCard,
-    battingOrder: battingXI.map((p) => p.id),
-    bowlingOrder: [], // Populated strictly when a bowler actually bowls a ball
+    battingOrder: uniqueBatXI.map((p) => p.id),
+    bowlingOrder: [],
     activeWicketkeeperId,
   };
 }
 
-// Pre-selects the next bowler in spells:
-// 1. After Over 1: selects designated 2nd opening bowler (B2)
-// 2. Subsequent overs: alternates back to the other-end spell partner (previousOverBowlerId) if they still have overs left
-// 3. If spell partner hit their over quota (4 in T20 / 10 in ODI): picks randomly from eligible BOWLER / ALL_ROUNDER players
 export async function getNextSpellBowler(
   match: Match,
   justFinishedBowlerId: string,
@@ -98,17 +224,14 @@ export async function getNextSpellBowler(
     return Math.floor(card.ballsBowled / 6) < maxOvers;
   };
 
-  // 1. Going into Over 2: pre-select designated 2nd opening bowler if eligible
   if (match.state.currentOver === 1 && isEligible(openingPair?.[1])) {
     return openingPair[1];
   }
 
-  // 2. Continue the spell from the other end (e.g., Starc -> Hazlewood -> Starc) if quota remains
   if (isEligible(otherEndBowlerId)) {
     return otherEndBowlerId;
   }
 
-  // 3. Spell partner finished their quota (or is unavailable): pick randomly from eligible BOWLER / ALL_ROUNDER
   const allPlayers = await db.players.toArray();
   const playerMap = new Map(allPlayers.map((p) => [p.id, p]));
 
@@ -116,21 +239,25 @@ export async function getNextSpellBowler(
     isEligible(b.playerId)
   );
 
-  const specialistAndAllRounders = eligibleCards.filter((b) => {
-    const role = playerMap.get(b.playerId)?.role;
-    return role === 'BOWLER' || role === 'ALL_ROUNDER';
-  });
+  // Prefer specialist BOWLERS first, then ALL_ROUNDERS
+  const pureBowlers = eligibleCards.filter(
+    (b) => playerMap.get(b.playerId)?.role === 'BOWLER'
+  );
+  const allRounders = eligibleCards.filter(
+    (b) => playerMap.get(b.playerId)?.role === 'ALL_ROUNDER'
+  );
 
   const pool =
-    specialistAndAllRounders.length > 0
-      ? specialistAndAllRounders
+    pureBowlers.length > 0
+      ? pureBowlers
+      : allRounders.length > 0
+      ? allRounders
       : eligibleCards;
 
   if (pool.length === 0) return justFinishedBowlerId;
   return pool[Math.floor(Math.random() * pool.length)].playerId;
 }
 
-// Synchronous helper if needed by UI components
 export function getSuggestedNextBowler(match: Match): string {
   const innings = match.inningsList[match.inningsList.length - 1];
   const maxOvers = match.state.isSuperOver
@@ -152,7 +279,6 @@ export function getSuggestedNextBowler(match: Match): string {
   return eligible[0].playerId;
 }
 
-// Manual bowler change between overs (or before first ball of an innings)
 export async function selectNextBowler(
   matchId: string,
   bowlerId: string
@@ -161,15 +287,10 @@ export async function selectNextBowler(
   if (!match || match.status !== 'LIVE') return;
   if (match.state.currentBall !== 0) return;
 
-  // Note: previousBowlerId already holds the bowler who bowled the just-completed over;
-  // overriding currentBowlerId here starts a new spell from this end without overwriting previousBowlerId
   match.state.currentBowlerId = bowlerId;
   await db.matches.put(match);
 }
 
-// Swap wicketkeeping duties when current keeper bowls:
-// - If replacement is a WICKETKEEPER: permanent swap for the rest of the match
-// - If replacement is NOT a wicketkeeper: temporary 1-over stand-in; original keeper gets gloves back after the over
 export async function swapActiveWicketkeeper(
   matchId: string,
   newKeeperId: string
@@ -201,7 +322,6 @@ export async function swapActiveWicketkeeper(
   await db.matches.put(match);
 }
 
-// Swap/reorder batting lineup; if 0 balls bowled in innings, also updates striker & non-striker
 export async function adjustBattingOrder(
   matchId: string,
   newBattingOrder: string[]
@@ -260,11 +380,11 @@ async function syncCareerStats(match: Match): Promise<void> {
 }
 
 function getDefaultOpeningPair(xi: Player[]): [string, string] {
-  const bowlers = [...xi]
-    .reverse()
-    .filter((p) => p.role === 'BOWLER' || p.role === 'ALL_ROUNDER');
-  const b1 = bowlers[0]?.id ?? xi[xi.length - 1].id;
-  const b2 = bowlers[1]?.id ?? xi[xi.length - 2].id;
+  const pureBowlers = xi.filter((p) => p.role === 'BOWLER');
+  const allRounders = xi.filter((p) => p.role === 'ALL_ROUNDER');
+  const pool = [...pureBowlers, ...allRounders];
+  const b1 = pool[0]?.id ?? xi[xi.length - 1].id;
+  const b2 = pool[1]?.id ?? xi[xi.length - 2].id;
   return [b1, b2];
 }
 
@@ -283,16 +403,23 @@ export async function startQuickMatch(
     infiniteSuperOvers?: boolean;
   }
 ): Promise<string> {
+  const teamAObj = await db.teams.get(teamAId);
+  const teamBObj = await db.teams.get(teamBId);
   const allA = await db.players.where('teamId').equals(teamAId).toArray();
   const allB = await db.players.where('teamId').equals(teamBId).toArray();
 
+  const isTeamAIpl =
+    teamAObj?.category === 'IPL' || teamAId.startsWith('ipl_');
+  const isTeamBIpl =
+    teamBObj?.category === 'IPL' || teamBId.startsWith('ipl_');
+
   const teamAPlayers = options?.playingXIA
     ? options.playingXIA.map((id) => allA.find((p) => p.id === id)!)
-    : allA.slice(0, 11);
+    : buildBalancedPlayingXI(allA, isTeamAIpl);
 
   const teamBPlayers = options?.playingXIB
     ? options.playingXIB.map((id) => allB.find((p) => p.id === id)!)
-    : allB.slice(0, 11);
+    : buildBalancedPlayingXI(allB, isTeamBIpl);
 
   const openingBowlersA =
     options?.openingBowlersA ?? getDefaultOpeningPair(teamAPlayers);
@@ -302,12 +429,12 @@ export async function startQuickMatch(
   const wicketkeeperAId =
     options?.wicketkeeperAId ??
     teamAPlayers.find((p) => p.isWicketkeeper || p.role === 'WICKETKEEPER')?.id ??
-    teamAPlayers[3].id;
+    teamAPlayers[2].id;
 
   const wicketkeeperBId =
     options?.wicketkeeperBId ??
     teamBPlayers.find((p) => p.isWicketkeeper || p.role === 'WICKETKEEPER')?.id ??
-    teamBPlayers[3].id;
+    teamBPlayers[2].id;
 
   const totalOvers = format === 'T20' ? 20 : format === 'ODI' ? 50 : 90;
 
@@ -371,7 +498,7 @@ export async function startSuperOver(matchId: string): Promise<void> {
   const keeperA =
     match.wicketkeeperAId ??
     teamAPlayers.find((p) => p.role === 'WICKETKEEPER')?.id ??
-    teamAPlayers[3].id;
+    teamAPlayers[2].id;
 
   const superInnings = buildInnings(
     1,
@@ -413,7 +540,6 @@ export async function playNextBall(matchId: string): Promise<void> {
   const innings = structuredClone(match.inningsList[inningsIdx]);
   if (!innings.bowlingOrder) innings.bowlingOrder = [];
 
-  // Record current bowler in chronological bowlingOrder ONLY when they actually bowl a delivery
   if (!innings.bowlingOrder.includes(state.currentBowlerId)) {
     innings.bowlingOrder.push(state.currentBowlerId);
   }
@@ -566,7 +692,6 @@ export async function playNextBall(matchId: string): Promise<void> {
 
       [state.strikerId, state.nonStrikerId] = [state.nonStrikerId, state.strikerId];
 
-      // Capture the other-end spell partner BEFORE updating previousBowlerId
       const otherEndBowlerId = state.previousBowlerId;
       const justFinishedBowlerId = state.currentBowlerId;
 

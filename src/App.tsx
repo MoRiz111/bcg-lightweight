@@ -6,13 +6,14 @@ import {
   playFullOver,
   playNextBall,
   selectNextBowler,
-  startQuickMatch,
   startSuperOver,
   swapActiveWicketkeeper,
 } from './engine/matchEngine';
+import { syncMatchToTournament } from './engine/tournamentEngine';
 import type { BallEvent, MatchFormat } from './types/cricket';
 import { Scorecard } from './components/Scorecard';
 import { MatchSetup } from './components/MatchSetup';
+import { TournamentView } from './components/TournamentView';
 
 function formatBallChip(ev: BallEvent): { label: string; style: string } {
   if (ev.isWicket) {
@@ -73,12 +74,12 @@ function formatBallChip(ev: BallEvent): { label: string; style: string } {
 export default function App() {
   const [activeMatchId, setActiveMatchId] = useState<string | null>(null);
   const [isSetupOpen, setIsSetupOpen] = useState(false);
+  const [isTournamentOpen, setIsTournamentOpen] = useState(false);
   const [selectedFormat, setSelectedFormat] = useState<MatchFormat>('T20');
   const [activeTab, setActiveTab] = useState<'LIVE' | 'SCORECARD'>('LIVE');
   const [showLineupEditor, setShowLineupEditor] = useState(false);
   const [swapBatterSource, setSwapBatterSource] = useState<string | null>(null);
 
-  // Wicketkeeper-to-Bowler confirmation modal state
   const [keeperPromptBowlerId, setKeeperPromptBowlerId] = useState<string | null>(null);
   const [replacementKeeperId, setReplacementKeeperId] = useState<string>('');
 
@@ -99,6 +100,16 @@ export default function App() {
     [activeMatchId]
   );
 
+  useEffect(() => {
+    if (
+      match &&
+      match.tournamentId &&
+      (match.status === 'COMPLETED' || match.status === 'TIED')
+    ) {
+      syncMatchToTournament(match.id);
+    }
+  }, [match?.id, match?.status]);
+
   const ballEvents =
     useLiveQuery(
       () =>
@@ -117,13 +128,24 @@ export default function App() {
     [playersList]
   );
 
-  const handleQuickStart = async () => {
-    const teamA = teamsList[0]?.id ?? 'team_ind';
-    const teamB = teamsList[1]?.id ?? 'team_nz';
-    const id = await startQuickMatch(teamA, teamB, selectedFormat);
-    setActiveMatchId(id);
-    setActiveTab('LIVE');
-  };
+  if (!match && isTournamentOpen) {
+    return (
+      <TournamentView
+        teams={teamsList}
+        onPlayFixtureMatch={(matchId) => {
+          setIsTournamentOpen(false);
+          setActiveMatchId(matchId);
+          setActiveTab('LIVE');
+        }}
+        onViewMatchScorecard={(matchId) => {
+          setIsTournamentOpen(false);
+          setActiveMatchId(matchId);
+          setActiveTab('SCORECARD');
+        }}
+        onBackHome={() => setIsTournamentOpen(false)}
+      />
+    );
+  }
 
   if (!match && isSetupOpen) {
     return (
@@ -150,7 +172,7 @@ export default function App() {
               BCG Cricket Simulator
             </h1>
             <p className="text-sm text-slate-400 mt-1">
-              {teamsList.length} ICC T20I Teams Loaded • Ball-by-Ball Engine
+              {teamsList.length} Teams Loaded (12 International • 10 IPL)
             </p>
           </div>
 
@@ -180,13 +202,13 @@ export default function App() {
               onClick={() => setIsSetupOpen(true)}
               className="w-full py-3 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-base transition cursor-pointer"
             >
-              Custom Match (Playing XI & Import)
+              Start Custom Match (Playing XI & Import)
             </button>
             <button
-              onClick={handleQuickStart}
-              className="w-full py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 font-semibold text-sm border border-slate-700 transition cursor-pointer"
+              onClick={() => setIsTournamentOpen(true)}
+              className="w-full py-3 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-base transition cursor-pointer"
             >
-              Instant Quick Match (IND vs NZ)
+              🏆 Start / View Tournaments
             </button>
           </div>
 
@@ -200,7 +222,7 @@ export default function App() {
                   key={m.id}
                   onClick={() => {
                     setActiveMatchId(m.id);
-                    setActiveTab('LIVE');
+                    setActiveTab(m.status === 'LIVE' ? 'LIVE' : 'SCORECARD');
                   }}
                   className="w-full flex items-center justify-between px-3 py-2.5 rounded-lg bg-slate-950 hover:bg-slate-800 border border-slate-800 text-left text-xs transition cursor-pointer"
                 >
@@ -352,9 +374,14 @@ export default function App() {
     setSwapBatterSource(null);
   };
 
+  const handleExitMatch = () => {
+    const wasTournament = Boolean(match.tournamentId);
+    setActiveMatchId(null);
+    if (wasTournament) setIsTournamentOpen(true);
+  };
+
   return (
     <div className="min-h-screen bg-slate-950 text-white p-4 sm:p-6 max-w-4xl mx-auto space-y-5">
-      {/* Wicketkeeper-to-Bowler Swap Modal */}
       {keeperPromptBowlerId && (
         <div className="fixed inset-0 z-50 bg-black/75 flex items-center justify-center p-4">
           <div className="bg-slate-900 border border-purple-500/50 rounded-2xl max-w-md w-full p-5 space-y-4 shadow-2xl">
@@ -414,10 +441,10 @@ export default function App() {
       {/* Top Bar */}
       <div className="flex flex-wrap items-center justify-between gap-2">
         <button
-          onClick={() => setActiveMatchId(null)}
+          onClick={handleExitMatch}
           className="text-xs px-3 py-1.5 rounded-lg bg-slate-900 hover:bg-slate-800 border border-slate-800 text-slate-300 cursor-pointer"
         >
-          ← Home
+          {match.tournamentId ? '← Back to Tournament' : '← Home'}
         </button>
 
         <div className="flex gap-2">
@@ -586,15 +613,24 @@ export default function App() {
                   Play Super Over
                 </button>
               )}
-              <button
-                onClick={() => {
-                  setActiveMatchId(null);
-                  setIsSetupOpen(true);
-                }}
-                className="px-4 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-xs font-semibold cursor-pointer"
-              >
-                New Match
-              </button>
+              {match.tournamentId ? (
+                <button
+                  onClick={handleExitMatch}
+                  className="px-4 py-2 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-xs cursor-pointer"
+                >
+                  Back to Points Table →
+                </button>
+              ) : (
+                <button
+                  onClick={() => {
+                    setActiveMatchId(null);
+                    setIsSetupOpen(true);
+                  }}
+                  className="px-4 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-xs font-semibold cursor-pointer"
+                >
+                  New Match
+                </button>
+              )}
             </div>
           </div>
         )}
@@ -651,7 +687,6 @@ export default function App() {
         />
       ) : (
         <>
-          {/* Over Summary Strip */}
           {overSummaryBalls.length > 0 && (
             <div
               className={`rounded-xl px-4 py-3 border flex flex-wrap items-center justify-between gap-3 ${
@@ -690,7 +725,6 @@ export default function App() {
             </div>
           )}
 
-          {/* Last Ball Commentary Banner */}
           <div className="bg-slate-900/80 border border-slate-800 rounded-xl px-4 py-3 text-sm text-slate-200 flex items-center gap-2">
             {match.state.isFreeHit && (
               <span className="px-2 py-0.5 rounded bg-amber-500/20 text-amber-300 text-xs font-bold">

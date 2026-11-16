@@ -11,16 +11,16 @@ export type DismissalType =
 export type ExtrasType = 'WIDE' | 'NO_BALL' | 'BYE' | 'LEG_BYE' | null;
 
 export type BowlingStyle =
-  | 'RF'   // Right-arm Fast
-  | 'RFM'  // Right-arm Fast-Medium
-  | 'RM'   // Right-arm Medium
-  | 'LF'   // Left-arm Fast
-  | 'LFM'  // Left-arm Fast-Medium
-  | 'LM'   // Left-arm Medium
-  | 'OB'   // Right-arm Off-Break
-  | 'LB'   // Right-arm Leg-Break
-  | 'SLA'  // Slow Left-arm Orthodox
-  | 'LWS'; // Left-arm Wrist Spin
+  | 'RF'
+  | 'RFM'
+  | 'RM'
+  | 'LF'
+  | 'LFM'
+  | 'LM'
+  | 'OB'
+  | 'LB'
+  | 'SLA'
+  | 'LWS';
 
 export interface PlayerBattingStats {
   runs: number;
@@ -51,6 +51,7 @@ export interface Player {
   bowlingStyle?: BowlingStyle;
   isCaptain?: boolean;
   isWicketkeeper?: boolean;
+  isOverseas?: boolean;
   batting: PlayerBattingStats;
   bowling: PlayerBowlingStats;
 }
@@ -59,6 +60,7 @@ export interface Team {
   id: string;
   name: string;
   shortName: string;
+  category?: 'INTERNATIONAL' | 'IPL';
   captainId?: string;
   wicketkeeperId?: string;
 }
@@ -107,8 +109,9 @@ export interface Innings {
   battingCard: Record<string, BatterInningsCard>;
   bowlingCard: Record<string, BowlerInningsCard>;
   battingOrder: string[];
-  bowlingOrder: string[]; // Preserves chronological order in which bowlers came on
-  activeWicketkeeperId: string; // Tracks who is currently keeping wickets
+  bowlingOrder: string[];
+  activeWicketkeeperId: string;
+  standInReturnKeeperId?: string;
 }
 
 export interface BallEvent {
@@ -151,13 +154,14 @@ export interface MatchState {
 export interface Match {
   id: string;
   tournamentId?: string;
+  fixtureId?: string;
   format: MatchFormat;
   teamAId: string;
   teamBId: string;
   playingXIA: string[];
   playingXIB: string[];
-  openingBowlersA: [string, string]; // [1st Bowler, 2nd Bowler] for Team A
-  openingBowlersB: [string, string]; // [1st Bowler, 2nd Bowler] for Team B
+  openingBowlersA: [string, string];
+  openingBowlersB: [string, string];
   wicketkeeperAId: string;
   wicketkeeperBId: string;
   totalOvers: number;
@@ -184,32 +188,36 @@ export interface PointsTableEntry {
   netRunRate: number;
 }
 
+export type TournamentStage =
+  | 'GROUP'
+  | 'SEMI_FINAL'
+  | 'QUALIFIER_1'
+  | 'ELIMINATOR'
+  | 'QUALIFIER_2'
+  | 'FINAL';
+
+export interface TournamentFixture {
+  id: string;
+  matchNumber: number;
+  stage: TournamentStage;
+  teamAId: string;
+  teamBId: string;
+  matchId?: string;
+  status: 'UPCOMING' | 'LIVE' | 'COMPLETED';
+  winnerTeamId?: string;
+  loserTeamId?: string;
+  result?: string;
+}
+
 export interface Tournament {
   id: string;
   name: string;
   formatType: 'IPL' | 'ODI_WC_2023' | 'T20_WC_2026' | 'CUSTOM';
   matchFormat: MatchFormat;
   teamIds: string[];
+  fixtures: TournamentFixture[];
   pointsTable: PointsTableEntry[];
+  championTeamId?: string;
   status: 'ACTIVE' | 'COMPLETED';
   createdAt: number;
-}
-
-export interface Innings {
-  inningsNumber: 1 | 2 | 3 | 4;
-  battingTeamId: string;
-  bowlingTeamId: string;
-  runs: number;
-  wickets: number;
-  overs: number;
-  ballsInCurrentOver: number;
-  target?: number;
-  extras: Extras;
-  drsRemaining: number;
-  battingCard: Record<string, BatterInningsCard>;
-  bowlingCard: Record<string, BowlerInningsCard>;
-  battingOrder: string[];
-  bowlingOrder: string[];
-  activeWicketkeeperId: string;
-  standInReturnKeeperId?: string; // Set only when a non-keeper temporarily takes the gloves for 1 over
 }

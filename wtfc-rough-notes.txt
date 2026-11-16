@@ -1,4 +1,26 @@
+To Do :
+- in fall of wickets, show the runs with wickets like : 112/4
+- in tournament fixtures, a team shouldn't have back to back matches unless it is knockout or playoff stage
+- in team wise player stats for tournaments, only showing overs is fine, no need to show the balls bowled,
+  also in the bowling stats, the runs given by bowlers is not shown in team wise stats, but it is shown 
+  in individual stats. And remove the ball bowled stat as overs itself covers it.
+- add logos of all the teams (both international and IPL)
+- add toss feature (or randomize who bats first)
+- maintain different international teams for different formats with diff. cap/vc
+- 
+
+
+Commit 4 : 
+Phase 1 : 
+- tournament feature added
+- remove the instant quick match - IND vs NZ
+- have 22 member squads for IPL teams, with foreign players highlighted, and 4 foreign players in playing 11 rule.
+- for tournaments, match simulation added
+- match simulation made realistic with proper balance of batter, bowlers, all-rounders and atleast 1 keeper.
+  batting line-ups are also made realistic with bolwers batting deep down, and not on top.
+
 Commit 3 :
+Phase 1 : 
 - squad of first 12 T20 ranked teams are populated
 - playing 11 can be chosen before playing the match
 - while choosing playing 11, their roles like bolwer, all-rounder, etc. are mentioned.
@@ -17,8 +39,5 @@ Commit 3 :
   to be shown wrongly in bowling scorecard.
 - In live match tab, after every over give the over summary like : 1 1 2 . . W 6 | 10 runs, 1 wicket
 - next bowler should be shown in spells, and if the bowler to be suggested has already completed his over quota,
-  go for the random bowler/ all-rounder, and not batsman.
-
-
-To Do : 
+  go for the random bowler/ all-rounder, and not batsman. 
 
