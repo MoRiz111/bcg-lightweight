@@ -9,6 +9,7 @@ import {
 } from '../engine/tournamentEngine';
 import type { MatchFormat, Team, Tournament } from '../types/cricket';
 import { TournamentStats } from './TournamentStats';
+import { TeamLogo } from './TeamLogo';
 
 interface TournamentViewProps {
   teams: Team[];
@@ -251,13 +252,14 @@ export function TournamentView({
                     key={t.id}
                     type="button"
                     onClick={() => toggleTeam(t.id)}
-                    className={`px-3 py-2.5 rounded-xl border text-left text-xs font-semibold transition cursor-pointer ${
+                    className={`px-3 py-2.5 rounded-xl border text-left text-xs font-semibold transition flex items-center gap-2 cursor-pointer ${
                       active
                         ? 'bg-emerald-500/15 border-emerald-500/60 text-emerald-300'
                         : 'bg-slate-950 border-slate-800 text-slate-400 hover:border-slate-700'
                     }`}
                   >
-                    {t.name} ({t.shortName})
+                    <TeamLogo teamId={t.id} shortName={t.shortName} size="sm" />
+                    <span className="truncate">{t.name}</span>
                   </button>
                 );
               })}
@@ -326,12 +328,19 @@ export function TournamentView({
         </div>
 
         {champion && (
-          <div className="bg-amber-500/15 border border-amber-500/50 rounded-2xl p-5 text-center space-y-1">
+          <div className="bg-amber-500/15 border border-amber-500/50 rounded-2xl p-5 flex flex-col items-center justify-center gap-2">
             <div className="text-xs uppercase tracking-widest text-amber-300 font-bold">
               🏆 Tournament Champions
             </div>
-            <div className="text-2xl font-extrabold text-white">
-              {champion.name}
+            <div className="flex items-center gap-3">
+              <TeamLogo
+                teamId={champion.id}
+                shortName={champion.shortName}
+                size="lg"
+              />
+              <span className="text-2xl font-extrabold text-white">
+                {champion.name}
+              </span>
             </div>
           </div>
         )}
@@ -389,15 +398,22 @@ export function TournamentView({
                             {idx + 1}
                           </td>
                           <td className="py-2.5 px-3 font-bold text-slate-100">
-                            {team?.name ?? row.teamId}{' '}
-                            {qualifies && (
-                              <span className="ml-1.5 text-[10px] px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-300 font-bold">
-                                {activeTournament.formatType === 'IPL' &&
-                                idx < 2
-                                  ? 'Q1'
-                                  : 'Q'}
-                              </span>
-                            )}
+                            <div className="flex items-center gap-2.5">
+                              <TeamLogo
+                                teamId={row.teamId}
+                                shortName={team?.shortName ?? 'TM'}
+                                size="sm"
+                              />
+                              <span>{team?.name ?? row.teamId}</span>
+                              {qualifies && (
+                                <span className="text-[10px] px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-300 font-bold">
+                                  {activeTournament.formatType === 'IPL' &&
+                                  idx < 2
+                                    ? 'Q1'
+                                    : 'Q'}
+                                </span>
+                              )}
+                            </div>
                           </td>
                           <td className="py-2.5 px-3 text-right text-slate-300">
                             {row.matchesPlayed}
@@ -473,11 +489,23 @@ export function TournamentView({
                             {fix.stage.replace('_', ' ')}
                           </span>
                         </div>
-                        <div className="text-sm font-bold text-white mt-0.5">
-                          {tA?.name ?? 'Team A'} vs {tB?.name ?? 'Team B'}
+                        <div className="text-sm font-bold text-white mt-1 flex items-center gap-2 flex-wrap">
+                          <TeamLogo
+                            teamId={fix.teamAId}
+                            shortName={tA?.shortName ?? 'A'}
+                            size="sm"
+                          />
+                          <span>{tA?.name ?? 'Team A'}</span>
+                          <span className="text-slate-500 text-xs">vs</span>
+                          <TeamLogo
+                            teamId={fix.teamBId}
+                            shortName={tB?.shortName ?? 'B'}
+                            size="sm"
+                          />
+                          <span>{tB?.name ?? 'Team B'}</span>
                         </div>
                         {linkedMatch && linkedMatch.inningsList.length >= 2 && (
-                          <div className="text-xs text-slate-400 mt-0.5 font-mono">
+                          <div className="text-xs text-slate-400 mt-1 font-mono">
                             {teamsMap[linkedMatch.inningsList[0].battingTeamId]?.shortName}{' '}
                             {linkedMatch.inningsList[0].runs}/
                             {linkedMatch.inningsList[0].wickets} (

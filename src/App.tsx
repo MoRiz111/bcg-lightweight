@@ -14,6 +14,7 @@ import type { BallEvent, MatchFormat } from './types/cricket';
 import { Scorecard } from './components/Scorecard';
 import { MatchSetup } from './components/MatchSetup';
 import { TournamentView } from './components/TournamentView';
+import { TeamLogo } from './components/TeamLogo';
 
 function formatBallChip(ev: BallEvent): { label: string; style: string } {
   if (ev.isWicket) {
@@ -226,14 +227,28 @@ export default function App() {
                   }}
                   className="w-full flex items-center justify-between px-3 py-2.5 rounded-lg bg-slate-950 hover:bg-slate-800 border border-slate-800 text-left text-xs transition cursor-pointer"
                 >
-                  <div>
-                    <span className="font-bold text-slate-200">
-                      {teamsMap[m.teamAId]?.shortName ?? 'A'} vs{' '}
-                      {teamsMap[m.teamBId]?.shortName ?? 'B'} ({m.format})
-                    </span>
-                    <div className="text-slate-400 mt-0.5">
-                      {m.result ??
-                        `Innings ${m.state.innings}: ${m.state.totalRuns}/${m.state.wickets}`}
+                  <div className="flex items-center gap-2.5">
+                    <div className="flex -space-x-1.5">
+                      <TeamLogo
+                        teamId={m.teamAId}
+                        shortName={teamsMap[m.teamAId]?.shortName ?? 'A'}
+                        size="sm"
+                      />
+                      <TeamLogo
+                        teamId={m.teamBId}
+                        shortName={teamsMap[m.teamBId]?.shortName ?? 'B'}
+                        size="sm"
+                      />
+                    </div>
+                    <div>
+                      <span className="font-bold text-slate-200">
+                        {teamsMap[m.teamAId]?.shortName ?? 'A'} vs{' '}
+                        {teamsMap[m.teamBId]?.shortName ?? 'B'} ({m.format})
+                      </span>
+                      <div className="text-slate-400 mt-0.5">
+                        {m.result ??
+                          `Innings ${m.state.innings}: ${m.state.totalRuns}/${m.state.wickets}`}
+                      </div>
                     </div>
                   </div>
                   <span
@@ -543,45 +558,58 @@ export default function App() {
 
       {/* Main Scoreboard Header */}
       <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <div className="flex items-center gap-2 text-xs uppercase tracking-wider text-emerald-400 font-semibold">
-            <span>
-              {match.state.isSuperOver
-                ? `Super Over #${match.state.superOverCount}`
-                : `Innings ${match.state.innings}`}
-            </span>
-            <span>•</span>
-            <span>{match.format}</span>
-            <span>•</span>
-            <span className="text-slate-300">CRR: {currentRunRate}</span>
+        <div className="flex items-start gap-3.5">
+          <TeamLogo
+            teamId={currentInnings.battingTeamId}
+            shortName={battingTeam?.shortName ?? 'BAT'}
+            size="lg"
+          />
+          <div>
+            <div className="flex items-center gap-2 text-xs uppercase tracking-wider text-emerald-400 font-semibold flex-wrap">
+              <span>
+                {match.state.isSuperOver
+                  ? `Super Over #${match.state.superOverCount}`
+                  : `Innings ${match.state.innings}`}
+              </span>
+              <span>•</span>
+              <span>{match.format}</span>
+              <span>•</span>
+              <span className="text-slate-300">CRR: {currentRunRate}</span>
+              {match.state.target !== undefined && (
+                <>
+                  <span>•</span>
+                  <span className="text-amber-300">RRR: {requiredRunRate}</span>
+                </>
+              )}
+            </div>
+
+            <div className="text-3xl sm:text-4xl font-extrabold mt-1">
+              {battingTeam?.shortName ?? 'BAT'} {currentInnings.runs}/
+              {currentInnings.wickets}{' '}
+              <span className="text-base sm:text-lg font-normal text-slate-400">
+                ({match.state.currentOver}.{match.state.currentBall} /{' '}
+                {match.totalOvers} ov)
+              </span>
+            </div>
+
+            {match.tossSummary && (
+              <div className="text-xs text-slate-400 mt-1">
+                {match.tossSummary}
+              </div>
+            )}
+
             {match.state.target !== undefined && (
-              <>
-                <span>•</span>
-                <span className="text-amber-300">RRR: {requiredRunRate}</span>
-              </>
+              <div className="text-sm text-amber-400 mt-1.5 font-semibold">
+                Target: {match.state.target} • Need{' '}
+                <span className="text-white font-extrabold">{runsNeeded}</span>{' '}
+                runs from{' '}
+                <span className="text-white font-extrabold">
+                  {ballsRemaining}
+                </span>{' '}
+                balls to win
+              </div>
             )}
           </div>
-
-          <div className="text-3xl sm:text-4xl font-extrabold mt-1">
-            {battingTeam?.shortName ?? 'BAT'} {currentInnings.runs}/
-            {currentInnings.wickets}{' '}
-            <span className="text-base sm:text-lg font-normal text-slate-400">
-              ({match.state.currentOver}.{match.state.currentBall} /{' '}
-              {match.totalOvers} ov)
-            </span>
-          </div>
-
-          {match.state.target !== undefined && (
-            <div className="text-sm text-amber-400 mt-1.5 font-semibold">
-              Target: {match.state.target} • Need{' '}
-              <span className="text-white font-extrabold">{runsNeeded}</span>{' '}
-              runs from{' '}
-              <span className="text-white font-extrabold">
-                {ballsRemaining}
-              </span>{' '}
-              balls to win
-            </div>
-          )}
         </div>
 
         {match.status === 'LIVE' ? (

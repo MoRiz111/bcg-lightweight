@@ -50,10 +50,17 @@ export interface Player {
   role: 'BATTER' | 'BOWLER' | 'ALL_ROUNDER' | 'WICKETKEEPER';
   bowlingStyle?: BowlingStyle;
   isCaptain?: boolean;
+  isViceCaptain?: boolean;
   isWicketkeeper?: boolean;
   isOverseas?: boolean;
   batting: PlayerBattingStats;
   bowling: PlayerBowlingStats;
+}
+
+export interface FormatLeadership {
+  captainId: string;
+  viceCaptainId: string;
+  wicketkeeperId?: string;
 }
 
 export interface Team {
@@ -62,7 +69,9 @@ export interface Team {
   shortName: string;
   category?: 'INTERNATIONAL' | 'IPL';
   captainId?: string;
+  viceCaptainId?: string;
   wicketkeeperId?: string;
+  formatLeadership?: Partial<Record<MatchFormat, FormatLeadership>>;
 }
 
 export interface Extras {
@@ -164,6 +173,7 @@ export interface Match {
   openingBowlersB: [string, string];
   wicketkeeperAId: string;
   wicketkeeperBId: string;
+  tossSummary?: string;
   totalOvers: number;
   allowSuperOver: boolean;
   infiniteSuperOvers: boolean;

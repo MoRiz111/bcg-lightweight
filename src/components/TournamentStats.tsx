@@ -1,11 +1,11 @@
 import { useMemo, useState } from 'react';
 import type { Match, Player, Team, Tournament } from '../types/cricket';
+import { TeamLogo } from './TeamLogo';
 
 export interface TournamentPlayerRecord {
   player: Player;
   team: Team;
   matches: number;
-  // Batting
   batInnings: number;
   runs: number;
   ballsFaced: number;
@@ -20,7 +20,6 @@ export interface TournamentPlayerRecord {
   twoHundreds: number;
   batAverage: number;
   strikeRate: number;
-  // Bowling
   bowlInnings: number;
   ballsBowled: number;
   oversDisplay: string;
@@ -61,7 +60,7 @@ const LEADERBOARD_OPTIONS: { key: StatSortKey; label: string; badge?: string }[]
   { key: 'sixes', label: 'Most Sixes (6s)' },
   { key: 'fours', label: 'Most Fours (4s)' },
   { key: 'ballsFaced', label: 'Most Balls Faced' },
-  { key: 'ballsBowled', label: 'Most Overs / Balls Bowled' },
+  { key: 'ballsBowled', label: 'Most Overs Bowled' },
   { key: 'economy', label: 'Best Economy Rate' },
   { key: 'bowlAverage', label: 'Best Bowling Average' },
   { key: 'bowlStrikeRate', label: 'Best Bowling Strike Rate' },
@@ -93,11 +92,9 @@ export function TournamentStats({
     [players]
   );
 
-  // Aggregate every stat from all matches belonging to this tournament
   const records = useMemo(() => {
     const map = new Map<string, TournamentPlayerRecord>();
 
-    // Seed all squad players from participating teams so even 0-match bench players are inspectable team-wise
     for (const p of players) {
       if (!tournament.teamIds.includes(p.teamId)) continue;
       const team = teams[p.teamId];
@@ -204,7 +201,6 @@ export function TournamentStats({
       });
     }
 
-    // Finalize derived ratios
     for (const rec of map.values()) {
       const dismissals = rec.batInnings - rec.notOuts;
       rec.batAverage =
@@ -255,7 +251,6 @@ export function TournamentStats({
     });
 
     return [...filtered].sort((a, b) => {
-      // Lower is better for economy, bowling average, and bowling strike rate
       if (
         sortBy === 'economy' ||
         sortBy === 'bowlAverage' ||
@@ -280,24 +275,28 @@ export function TournamentStats({
         <div className="fixed inset-0 z-50 bg-black/75 flex items-center justify-center p-4">
           <div className="bg-slate-900 border border-slate-700 rounded-2xl max-w-lg w-full p-5 space-y-4 shadow-2xl max-h-[90vh] overflow-y-auto">
             <div className="flex items-start justify-between gap-3">
-              <div>
-                <div className="flex items-center gap-2 flex-wrap">
-                  <h3 className="text-lg font-extrabold text-white">
-                    {inspectedRecord.player.name}
-                  </h3>
-                  <span className="px-2 py-0.5 rounded bg-slate-800 text-slate-300 text-xs font-bold">
-                    {inspectedRecord.team.shortName}
-                  </span>
-                  {inspectedRecord.player.isOverseas && (
-                    <span className="px-2 py-0.5 rounded bg-sky-500/20 text-sky-300 text-xs font-bold">
-                      ✈ OS
-                    </span>
-                  )}
-                </div>
-                <div className="text-xs text-slate-400 mt-0.5">
-                  {inspectedRecord.player.role} •{' '}
-                  {inspectedRecord.player.bowlingStyle ?? 'RM'} •{' '}
-                  {inspectedRecord.matches} Matches in {tournament.name}
+              <div className="flex items-center gap-3">
+                <TeamLogo
+                  teamId={inspectedRecord.team.id}
+                  shortName={inspectedRecord.team.shortName}
+                  size="lg"
+                />
+                <div>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <h3 className="text-lg font-extrabold text-white">
+                      {inspectedRecord.player.name}
+                    </h3>
+                    {inspectedRecord.player.isOverseas && (
+                      <span className="px-2 py-0.5 rounded bg-sky-500/20 text-sky-300 text-xs font-bold">
+                        ✈ OS
+                      </span>
+                    )}
+                  </div>
+                  <div className="text-xs text-slate-400 mt-0.5">
+                    {inspectedRecord.player.role} •{' '}
+                    {inspectedRecord.player.bowlingStyle ?? 'RM'} •{' '}
+                    {inspectedRecord.matches} Matches in {tournament.name}
+                  </div>
                 </div>
               </div>
 
@@ -379,7 +378,7 @@ export function TournamentStats({
               </div>
             </div>
 
-            {/* Tournament Bowling Breakdown */}
+            {/* Tournament Bowling Breakdown (Overs & Runs Conceded — no redundant Balls Bowled) */}
             <div className="bg-slate-950/70 border border-slate-800 rounded-xl p-3.5 space-y-2">
               <div className="text-xs uppercase tracking-wider font-bold text-sky-400">
                 Tournament Bowling
@@ -398,21 +397,15 @@ export function TournamentStats({
                   </span>
                 </div>
                 <div>
-                  <span className="text-slate-500 block">Balls</span>
+                  <span className="text-slate-500 block">Runs Given</span>
                   <span className="font-bold text-white">
-                    {inspectedRecord.ballsBowled}
+                    {inspectedRecord.runsConceded}
                   </span>
                 </div>
                 <div>
                   <span className="text-slate-500 block">Wickets</span>
                   <span className="font-bold text-sky-400">
                     {inspectedRecord.wickets}
-                  </span>
-                </div>
-                <div>
-                  <span className="text-slate-500 block">Runs Given</span>
-                  <span className="font-bold text-white">
-                    {inspectedRecord.runsConceded}
                   </span>
                 </div>
                 <div>
@@ -462,7 +455,6 @@ export function TournamentStats({
               </div>
             </div>
 
-            {/* Overall Career Snapshot (Across All Matches & Formats) */}
             <div className="bg-slate-950/70 border border-amber-500/30 rounded-xl p-3.5 space-y-1.5">
               <div className="text-[11px] uppercase tracking-wider font-bold text-amber-400">
                 All-Time Overall Career (International + IPL + Custom)
@@ -550,16 +542,25 @@ export function TournamentStats({
         )}
       </div>
 
-      {/* Stats Table */}
+      {/* Stats Table (Overs + Runs Conceded + Wickets + Econ; no redundant Balls Bowled) */}
       <div className="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden">
         <div className="px-4 py-3 border-b border-slate-800 flex items-center justify-between">
-          <span className="font-bold text-sm text-slate-100">
-            {browseMode === 'LEADERS'
-              ? activeMeta?.label
-              : `${teams[selectedTeamId]?.name ?? 'Team'} — Squad Stats`}
-          </span>
+          <div className="flex items-center gap-2 font-bold text-sm text-slate-100">
+            {browseMode === 'TEAM_WISE' && (
+              <TeamLogo
+                teamId={selectedTeamId}
+                shortName={teams[selectedTeamId]?.shortName ?? 'TM'}
+                size="sm"
+              />
+            )}
+            <span>
+              {browseMode === 'LEADERS'
+                ? activeMeta?.label
+                : `${teams[selectedTeamId]?.name ?? 'Team'} — Squad Stats`}
+            </span>
+          </div>
           <span className="text-[11px] text-slate-400">
-            Click any player for full career & tournament breakdown
+            Click any player for full breakdown
           </span>
         </div>
 
@@ -577,7 +578,7 @@ export function TournamentStats({
                 <th className="py-2.5 px-2 text-right">SR</th>
                 <th className="py-2.5 px-2 text-right">4s/6s</th>
                 <th className="py-2.5 px-2 text-right">Ov</th>
-                <th className="py-2.5 px-2 text-right">Balls</th>
+                <th className="py-2.5 px-2 text-right">R</th>
                 <th className="py-2.5 px-2 text-right">Wkts</th>
                 <th className="py-2.5 px-3 text-right">Econ</th>
               </tr>
@@ -636,7 +637,7 @@ export function TournamentStats({
                       {rec.oversDisplay}
                     </td>
                     <td className="py-2.5 px-2 text-right text-slate-300">
-                      {rec.ballsBowled}
+                      {rec.ballsBowled > 0 ? rec.runsConceded : 0}
                     </td>
                     <td className="py-2.5 px-2 text-right font-bold text-sky-400">
                       {rec.wickets}

@@ -5,6 +5,7 @@ import {
   startQuickMatch,
 } from '../engine/matchEngine';
 import type { MatchFormat, Player, Team } from '../types/cricket';
+import { TeamLogo } from './TeamLogo';
 
 interface MatchSetupProps {
   teams: Team[];
@@ -45,6 +46,10 @@ export function MatchSetup({
     teams[1]?.id ?? teams[0]?.id ?? ''
   );
 
+  // Toss state
+  const [tossSummary, setTossSummary] = useState<string | null>(null);
+  const [isFlippingToss, setIsFlippingToss] = useState(false);
+
   const [xiA, setXiA] = useState<string[]>([]);
   const [xiB, setXiB] = useState<string[]>([]);
 
@@ -79,7 +84,32 @@ export function MatchSetup({
   const squadA = players.filter((p) => p.teamId === teamAId);
   const squadB = players.filter((p) => p.teamId === teamBId);
 
-  const initDefaultsForSquad = (squad: Player[], enforceMax4Overseas: boolean) => {
+  // Format-aware Captain, Vice-Captain & Wicketkeeper resolution
+  const getLeadershipForFormat = (team: Team | undefined, squad: Player[]) => {
+    const fmtLeader = team?.formatLeadership?.[format];
+    const capId =
+      fmtLeader?.captainId ??
+      team?.captainId ??
+      squad.find((p) => p.isCaptain)?.id;
+    const vcId =
+      fmtLeader?.viceCaptainId ??
+      team?.viceCaptainId ??
+      squad.find((p) => p.isViceCaptain)?.id;
+    const wkId =
+      fmtLeader?.wicketkeeperId ??
+      team?.wicketkeeperId ??
+      squad.find((p) => p.isWicketkeeper || p.role === 'WICKETKEEPER')?.id;
+    return { capId, vcId, wkId };
+  };
+
+  const leaderA = getLeadershipForFormat(teamAObj, squadA);
+  const leaderB = getLeadershipForFormat(teamBObj, squadB);
+
+  const initDefaultsForSquad = (
+    squad: Player[],
+    enforceMax4Overseas: boolean,
+    preferredKeeperId?: string
+  ) => {
     const defaultXI = buildBalancedPlayingXI(squad, enforceMax4Overseas);
     const bowlers = defaultXI.filter(
       (p) => p.role === 'BOWLER' || p.role === 'ALL_ROUNDER'
@@ -87,29 +117,67 @@ export function MatchSetup({
     const b1 = bowlers[0]?.id ?? defaultXI[defaultXI.length - 1]?.id ?? '';
     const b2 = bowlers[1]?.id ?? defaultXI[defaultXI.length - 2]?.id ?? '';
     const wk =
-      defaultXI.find((p) => p.isWicketkeeper || p.role === 'WICKETKEEPER')?.id ??
+      (preferredKeeperId && defaultXI.some((p) => p.id === preferredKeeperId)
+        ? preferredKeeperId
+        : defaultXI.find((p) => p.isWicketkeeper || p.role === 'WICKETKEEPER')
+            ?.id) ??
       defaultXI[2]?.id ??
       '';
     return { xiIds: defaultXI.map((p) => p.id), b1, b2, wk };
   };
 
   useEffect(() => {
-    const { xiIds, b1, b2, wk } = initDefaultsForSquad(squadA, isTeamAIpl);
+    const { xiIds, b1, b2, wk } = initDefaultsForSquad(
+      squadA,
+      isTeamAIpl,
+      leaderA.wkId
+    );
     setXiA(xiIds);
     setOpenBowlersA([b1, b2]);
     setKeeperA(wk);
     setSelectedActionPlayerA(null);
     setSwapSourceA(null);
-  }, [teamAId, players.length]);
+  }, [teamAId, format, players.length]);
 
   useEffect(() => {
-    const { xiIds, b1, b2, wk } = initDefaultsForSquad(squadB, isTeamBIpl);
+    const { xiIds, b1, b2, wk } = initDefaultsForSquad(
+      squadB,
+      isTeamBIpl,
+      leaderB.wkId
+    );
     setXiB(xiIds);
     setOpenBowlersB([b1, b2]);
     setKeeperB(wk);
     setSelectedActionPlayerB(null);
     setSwapSourceB(null);
-  }, [teamBId, players.length]);
+  }, [teamBId, format, players.length]);
+
+  // Simulate coin toss: randomly selects winner and decision (Bat or Bowl), and swaps Team A / Team B automatically so Team A always bats first
+  const handleSimulateToss = () => {
+    if (!teamAObj || !teamBObj || teamAId === teamBId) return;
+    setIsFlippingToss(true);
+    setTimeout(() => {
+      const winnerIsA = Math.random() < 0.5;
+      const winner = winnerIsA ? teamAObj : teamBObj;
+      const decision: 'BAT' | 'BOWL' = Math.random() < 0.5 ? 'BAT' : 'BOWL';
+
+      const shouldSwapSides =
+        (winnerIsA && decision === 'BOWL') ||
+        (!winnerIsA && decision === 'BAT');
+
+      if (shouldSwapSides) {
+        const prevA = teamAId;
+        const prevB = teamBId;
+        setTeamAId(prevB);
+        setTeamBId(prevA);
+      }
+
+      setTossSummary(
+        `🪙 ${winner.name} won the toss and elected to ${decision.toLowerCase()} first!`
+      );
+      setIsFlippingToss(false);
+    }, 250);
+  };
 
   const countOverseasInXI = (squad: Player[], xiIds: string[]) =>
     xiIds.filter((id) => squad.find((p) => p.id === id)?.isOverseas).length;
@@ -162,6 +230,7 @@ export function MatchSetup({
             role?: Player['role'];
             bowlingStyle?: Player['bowlingStyle'];
             isCaptain?: boolean;
+            isViceCaptain?: boolean;
             isWicketkeeper?: boolean;
             isOverseas?: boolean;
           },
@@ -175,6 +244,7 @@ export function MatchSetup({
             {
               bowlingStyle: p.bowlingStyle ?? 'RM',
               isCaptain: Boolean(p.isCaptain),
+              isViceCaptain: Boolean(p.isViceCaptain),
               isWicketkeeper: Boolean(p.isWicketkeeper),
               isOverseas: Boolean(p.isOverseas),
             }
@@ -182,6 +252,8 @@ export function MatchSetup({
       );
 
       const captain = newPlayers.find((p) => p.isCaptain) ?? newPlayers[0];
+      const viceCaptain =
+        newPlayers.find((p) => p.isViceCaptain) ?? newPlayers[1];
       const keeper =
         newPlayers.find((p) => p.isWicketkeeper) ??
         newPlayers.find((p) => p.role === 'WICKETKEEPER') ??
@@ -193,6 +265,7 @@ export function MatchSetup({
         shortName: parsed.shortName.toUpperCase(),
         category: parsed.category === 'IPL' ? 'IPL' : 'INTERNATIONAL',
         captainId: captain.id,
+        viceCaptainId: viceCaptain.id,
         wicketkeeperId: keeper.id,
       };
 
@@ -240,16 +313,23 @@ export function MatchSetup({
       allowSuperOver: superOverMode !== 'NONE',
       infiniteSuperOvers: superOverMode === 'INFINITE',
     });
+
+    if (tossSummary) {
+      await db.matches.update(matchId, { tossSummary });
+    }
+
     onMatchStarted(matchId);
   };
 
   const renderSquadColumn = (
     label: string,
     teamId: string,
+    teamObj: Team | undefined,
     onChangeTeam: (id: string) => void,
     squad: Player[],
     selectedXI: string[],
     setSelectedXI: (ids: string[]) => void,
+    leadership: { capId?: string; vcId?: string; wkId?: string },
     enforceMax4Overseas: boolean,
     overseasCount: number,
     openBowlers: [string, string],
@@ -290,32 +370,42 @@ export function MatchSetup({
     return (
       <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4 space-y-4">
         <div className="flex flex-wrap items-center justify-between gap-2">
-          <div>
-            <span className="text-[11px] uppercase tracking-wider text-slate-400 font-semibold block">
-              {label}
-            </span>
-            <select
-              value={teamId}
-              onChange={(e) => onChangeTeam(e.target.value)}
-              className="mt-1 bg-slate-950 border border-slate-700 rounded-lg px-3 py-1.5 text-sm font-bold text-white max-w-[230px]"
-            >
-              {iplTeams.length > 0 && (
-                <optgroup label="IPL Franchises (22-Man Squads)">
-                  {iplTeams.map((t) => (
+          <div className="flex items-center gap-2.5">
+            <TeamLogo
+              teamId={teamId}
+              shortName={teamObj?.shortName ?? 'TM'}
+              size="md"
+            />
+            <div>
+              <span className="text-[11px] uppercase tracking-wider text-slate-400 font-semibold block">
+                {label}
+              </span>
+              <select
+                value={teamId}
+                onChange={(e) => {
+                  onChangeTeam(e.target.value);
+                  setTossSummary(null);
+                }}
+                className="mt-0.5 bg-slate-950 border border-slate-700 rounded-lg px-2.5 py-1.5 text-sm font-bold text-white max-w-[200px]"
+              >
+                {iplTeams.length > 0 && (
+                  <optgroup label="IPL Franchises (22-Man Squads)">
+                    {iplTeams.map((t) => (
+                      <option key={t.id} value={t.id}>
+                        {t.name} ({t.shortName})
+                      </option>
+                    ))}
+                  </optgroup>
+                )}
+                <optgroup label="International Teams">
+                  {internationalTeams.map((t) => (
                     <option key={t.id} value={t.id}>
                       {t.name} ({t.shortName})
                     </option>
                   ))}
                 </optgroup>
-              )}
-              <optgroup label="International Teams">
-                {internationalTeams.map((t) => (
-                  <option key={t.id} value={t.id}>
-                    {t.name} ({t.shortName})
-                  </option>
-                ))}
-              </optgroup>
-            </select>
+              </select>
+            </div>
           </div>
 
           <div className="flex items-center gap-1.5">
@@ -326,7 +416,6 @@ export function MatchSetup({
                     ? 'bg-sky-500/20 text-sky-300 border border-sky-500/30'
                     : 'bg-rose-500/20 text-rose-300 border border-rose-500/40'
                 }`}
-                title="IPL Rule: Maximum 4 Overseas players allowed in Playing XI"
               >
                 ✈ {overseasCount}/4 OS
               </span>
@@ -361,7 +450,7 @@ export function MatchSetup({
           ) : (
             <>
               <span>Click player to Swap, Set Bowler, or Keeper</span>
-              <span>{enforceMax4Overseas ? '✈ OS (Max 4) • ' : ''}C • 🧤 • ⚾1/2</span>
+              <span>C • VC • 🧤 • ⚾1/2</span>
             </>
           )}
         </div>
@@ -374,6 +463,8 @@ export function MatchSetup({
             const isB1 = openBowlers[0] === id;
             const isB2 = openBowlers[1] === id;
             const isKeeper = activeKeeperId === id;
+            const isFormatCaptain = leadership.capId === id;
+            const isFormatVC = leadership.vcId === id;
             const isActionOpen = actionPlayerId === id;
             const isSwapSource = swapSourceId === id;
 
@@ -406,10 +497,7 @@ export function MatchSetup({
                     </span>
 
                     {p.isOverseas && (
-                      <span
-                        className="px-1.5 py-0.5 rounded bg-sky-500/25 text-sky-300 border border-sky-500/40 text-[10px] font-bold"
-                        title="Overseas Player"
-                      >
+                      <span className="px-1.5 py-0.5 rounded bg-sky-500/25 text-sky-300 border border-sky-500/40 text-[10px] font-bold">
                         ✈ OS
                       </span>
                     )}
@@ -425,32 +513,34 @@ export function MatchSetup({
                       {p.bowlingStyle ? ` • ${p.bowlingStyle}` : ''}
                     </span>
 
-                    {p.isCaptain && (
-                      <span className="px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300 text-[10px] font-bold">
+                    {isFormatCaptain && (
+                      <span
+                        className="px-1.5 py-0.5 rounded bg-amber-500/25 text-amber-300 text-[10px] font-bold"
+                        title={`${format} Captain`}
+                      >
                         C
                       </span>
                     )}
-                    {isKeeper && (
+                    {isFormatVC && (
                       <span
-                        className="px-1.5 py-0.5 rounded bg-purple-500/20 text-purple-300 text-[10px] font-bold"
-                        title="Assigned Wicketkeeper"
+                        className="px-1.5 py-0.5 rounded bg-slate-800 text-amber-200 border border-amber-500/30 text-[10px] font-bold"
+                        title={`${format} Vice-Captain`}
                       >
+                        VC
+                      </span>
+                    )}
+                    {isKeeper && (
+                      <span className="px-1.5 py-0.5 rounded bg-purple-500/20 text-purple-300 text-[10px] font-bold">
                         🧤 WK
                       </span>
                     )}
                     {isB1 && (
-                      <span
-                        className="px-1.5 py-0.5 rounded bg-sky-500/20 text-sky-300 text-[10px] font-bold"
-                        title="1st Opening Bowler"
-                      >
+                      <span className="px-1.5 py-0.5 rounded bg-sky-500/20 text-sky-300 text-[10px] font-bold">
                         ⚾1
                       </span>
                     )}
                     {isB2 && (
-                      <span
-                        className="px-1.5 py-0.5 rounded bg-cyan-500/20 text-cyan-300 text-[10px] font-bold"
-                        title="2nd Opening Bowler"
-                      >
+                      <span className="px-1.5 py-0.5 rounded bg-cyan-500/20 text-cyan-300 text-[10px] font-bold">
                         ⚾2
                       </span>
                     )}
@@ -565,11 +655,6 @@ export function MatchSetup({
                         )
                       }
                       disabled={isDisabled}
-                      title={
-                        overseasBlocked
-                          ? 'Drop an overseas player from Playing XI first (Max 4 allowed)'
-                          : 'Add to Playing XI'
-                      }
                       className={`px-2.5 py-1.5 rounded-lg border text-xs disabled:opacity-40 cursor-pointer ${
                         p.isOverseas
                           ? 'bg-sky-950/40 hover:bg-sky-900/50 border-sky-800/70 text-sky-200'
@@ -609,7 +694,7 @@ export function MatchSetup({
         <div>
           <h1 className="text-2xl font-extrabold">Pre-Match Setup</h1>
           <p className="text-xs text-slate-400">
-            Select Playing XI (max 4 overseas for IPL), swap batting order, assign opening bowlers & keeper
+            Format-specific captains & vice-captains, coin toss, Playing XI, and opening bowlers
           </p>
         </div>
 
@@ -668,10 +753,11 @@ export function MatchSetup({
         </div>
       )}
 
-      <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4 grid grid-cols-1 sm:grid-cols-2 gap-4">
+      {/* Format, Coin Toss & Super Over Config */}
+      <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4 grid grid-cols-1 md:grid-cols-3 gap-4 items-center">
         <div>
           <label className="text-[11px] uppercase tracking-wider text-slate-400 font-semibold block mb-1.5">
-            Match Format
+            Match Format (Updates C / VC)
           </label>
           <div className="grid grid-cols-3 gap-1.5">
             {(['T20', 'ODI', 'TEST'] as MatchFormat[]).map((fmt) => (
@@ -696,6 +782,20 @@ export function MatchSetup({
 
         <div>
           <label className="text-[11px] uppercase tracking-wider text-slate-400 font-semibold block mb-1.5">
+            Coin Toss (Randomize Bat / Bowl)
+          </label>
+          <button
+            type="button"
+            disabled={teamAId === teamBId || isFlippingToss}
+            onClick={handleSimulateToss}
+            className="w-full py-2 px-3 rounded-lg bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/40 text-amber-300 font-bold text-xs cursor-pointer disabled:opacity-40"
+          >
+            {isFlippingToss ? 'Flipping Coin...' : '🪙 Flip Coin for Toss'}
+          </button>
+        </div>
+
+        <div>
+          <label className="text-[11px] uppercase tracking-wider text-slate-400 font-semibold block mb-1.5">
             Tie-Breaker (Super Over)
           </label>
           <select
@@ -713,14 +813,26 @@ export function MatchSetup({
         </div>
       </div>
 
+      {/* Toss Result Banner */}
+      {tossSummary && (
+        <div className="bg-amber-500/15 border border-amber-500/40 rounded-xl px-4 py-3 text-xs sm:text-sm font-bold text-amber-200 flex items-center justify-between">
+          <span>{tossSummary}</span>
+          <span className="text-[11px] font-normal text-amber-300/80">
+            {teamAObj?.shortName} bats first
+          </span>
+        </div>
+      )}
+
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {renderSquadColumn(
           'Batting First (Team A)',
           teamAId,
+          teamAObj,
           setTeamAId,
           squadA,
           xiA,
           setXiA,
+          leaderA,
           isTeamAIpl,
           overseasCountA,
           openBowlersA,
@@ -735,10 +847,12 @@ export function MatchSetup({
         {renderSquadColumn(
           'Bowling First (Team B)',
           teamBId,
+          teamBObj,
           setTeamBId,
           squadB,
           xiB,
           setXiB,
+          leaderB,
           isTeamBIpl,
           overseasCountB,
           openBowlersB,

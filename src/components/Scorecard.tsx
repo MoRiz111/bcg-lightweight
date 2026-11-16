@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import type { BallEvent, Innings, Player, Team } from '../types/cricket';
+import { TeamLogo } from './TeamLogo';
 
 interface ScorecardProps {
   inningsList: Innings[];
@@ -42,7 +43,6 @@ export function Scorecard({
     .map((id) => innings.battingCard[id])
     .filter(Boolean);
 
-  // Preserve chronological bowling order & ONLY include bowlers who have bowled at least 1 ball
   const chronologicalIds = innings.bowlingOrder ?? [];
   const allBowlerCards = Object.values(innings.bowlingCard);
   const orderedBowlerIds = [
@@ -56,12 +56,23 @@ export function Scorecard({
     .map((id) => innings.bowlingCard[id])
     .filter((b) => b && b.ballsBowled > 0);
 
-  const wicketsInInnings = ballEvents
-    .filter((e) => e.inningsNumber === innings.inningsNumber && e.isWicket)
-    .map((e, idx) => {
-      const batterName = players[e.batsmanId]?.name ?? 'Batter';
-      return `${idx + 1}-${batterName} (${e.over}.${e.ball} ov)`;
-    });
+  // Compute running team score at each fall of wicket: "112/4 (Batter Name, 14.2 ov)"
+  let runningRuns = 0;
+  let runningWickets = 0;
+  const wicketsInInnings: string[] = [];
+
+  for (const ev of ballEvents.filter(
+    (e) => e.inningsNumber === innings.inningsNumber
+  )) {
+    runningRuns += ev.runs + ev.extraRuns;
+    if (ev.isWicket) {
+      runningWickets += 1;
+      const batterName = players[ev.batsmanId]?.name ?? 'Batter';
+      wicketsInInnings.push(
+        `${runningRuns}/${runningWickets} (${batterName}, ${ev.over}.${ev.ball} ov)`
+      );
+    }
+  }
 
   return (
     <div className="space-y-6">
@@ -73,14 +84,20 @@ export function Scorecard({
             <button
               key={inn.inningsNumber}
               onClick={() => setSelectedInningsIdx(idx)}
-              className={`px-4 py-2 rounded-lg text-sm font-semibold transition cursor-pointer ${
+              className={`px-3.5 py-2 rounded-lg text-sm font-semibold transition flex items-center gap-2 cursor-pointer ${
                 isSelected
                   ? 'bg-emerald-500 text-slate-950'
                   : 'bg-slate-900 text-slate-300 hover:bg-slate-800 border border-slate-800'
               }`}
             >
-              {team?.shortName ?? 'Team'} • Inn {inn.inningsNumber} ({inn.runs}/
-              {inn.wickets})
+              <TeamLogo
+                teamId={inn.battingTeamId}
+                shortName={team?.shortName ?? 'TM'}
+                size="sm"
+              />
+              <span>
+                Inn {inn.inningsNumber} ({inn.runs}/{inn.wickets})
+              </span>
             </button>
           );
         })}
@@ -89,9 +106,14 @@ export function Scorecard({
       {/* Batting Table */}
       <div className="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden">
         <div className="px-4 py-3 bg-slate-900/90 border-b border-slate-800 flex justify-between items-center">
-          <span className="font-bold text-slate-100">
-            {battingTeam?.name ?? 'Batting'} — Batting
-          </span>
+          <div className="flex items-center gap-2.5 font-bold text-slate-100">
+            <TeamLogo
+              teamId={innings.battingTeamId}
+              shortName={battingTeam?.shortName ?? 'BAT'}
+              size="sm"
+            />
+            <span>{battingTeam?.name ?? 'Batting'} — Batting</span>
+          </div>
           <span className="text-sm text-slate-400">
             {innings.runs}/{innings.wickets} ({innings.overs} ov)
           </span>
@@ -153,6 +175,11 @@ export function Scorecard({
                           C
                         </span>
                       )}
+                      {profile?.isViceCaptain && (
+                        <span className="ml-1 text-[10px] px-1.5 py-0.5 rounded bg-slate-800 text-amber-200 font-bold">
+                          VC
+                        </span>
+                      )}
                       {profile?.isWicketkeeper && (
                         <span className="ml-1 text-xs" title="Wicketkeeper">
                           🧤
@@ -208,6 +235,7 @@ export function Scorecard({
         </div>
       </div>
 
+      {/* Fall of Wickets with Score */}
       {wicketsInInnings.length > 0 && (
         <div className="bg-slate-900 border border-slate-800 rounded-xl p-4 text-xs">
           <div className="uppercase tracking-wider text-slate-400 font-semibold mb-1.5">
@@ -219,10 +247,15 @@ export function Scorecard({
         </div>
       )}
 
-      {/* Chronological Bowling Table (Only bowlers who have bowled >= 1 ball) */}
+      {/* Bowling Table */}
       <div className="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden">
-        <div className="px-4 py-3 bg-slate-900/90 border-b border-slate-800 font-bold text-slate-100">
-          {bowlingTeam?.name ?? 'Bowling'} — Bowling
+        <div className="px-4 py-3 bg-slate-900/90 border-b border-slate-800 font-bold text-slate-100 flex items-center gap-2.5">
+          <TeamLogo
+            teamId={innings.bowlingTeamId}
+            shortName={bowlingTeam?.shortName ?? 'BWL'}
+            size="sm"
+          />
+          <span>{bowlingTeam?.name ?? 'Bowling'} — Bowling</span>
         </div>
 
         <div className="overflow-x-auto">

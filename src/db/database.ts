@@ -37,6 +37,7 @@ export function createEmptyPlayer(
   role: Player['role'],
   flags?: {
     isCaptain?: boolean;
+    isViceCaptain?: boolean;
     isWicketkeeper?: boolean;
     isOverseas?: boolean;
     bowlingStyle?: BowlingStyle;
@@ -49,6 +50,7 @@ export function createEmptyPlayer(
     role,
     bowlingStyle: flags?.bowlingStyle ?? 'RM',
     isCaptain: flags?.isCaptain ?? false,
+    isViceCaptain: flags?.isViceCaptain ?? false,
     isWicketkeeper: flags?.isWicketkeeper ?? false,
     isOverseas: flags?.isOverseas ?? false,
     batting: {
@@ -85,34 +87,191 @@ export function seedInitialDataIfEmpty(): Promise<void> {
 
 async function runSeed(): Promise<void> {
   const teams: Team[] = [
-    // 12 ICC T20I International Teams
-    { id: 'team_ind', name: 'India', shortName: 'IND', category: 'INTERNATIONAL', captainId: 'ind_1', wicketkeeperId: 'ind_3' },
-    { id: 'team_nz', name: 'New Zealand', shortName: 'NZ', category: 'INTERNATIONAL', captainId: 'nz_1', wicketkeeperId: 'nz_3' },
-    { id: 'team_aus', name: 'Australia', shortName: 'AUS', category: 'INTERNATIONAL', captainId: 'aus_1', wicketkeeperId: 'aus_3' },
-    { id: 'team_eng', name: 'England', shortName: 'ENG', category: 'INTERNATIONAL', captainId: 'eng_1', wicketkeeperId: 'eng_3' },
-    { id: 'team_sa', name: 'South Africa', shortName: 'SA', category: 'INTERNATIONAL', captainId: 'sa_1', wicketkeeperId: 'sa_3' },
-    { id: 'team_wi', name: 'West Indies', shortName: 'WI', category: 'INTERNATIONAL', captainId: 'wi_1', wicketkeeperId: 'wi_2' },
-    { id: 'team_pak', name: 'Pakistan', shortName: 'PAK', category: 'INTERNATIONAL', captainId: 'pak_1', wicketkeeperId: 'pak_3' },
-    { id: 'team_sl', name: 'Sri Lanka', shortName: 'SL', category: 'INTERNATIONAL', captainId: 'sl_1', wicketkeeperId: 'sl_2' },
-    { id: 'team_afg', name: 'Afghanistan', shortName: 'AFG', category: 'INTERNATIONAL', captainId: 'afg_1', wicketkeeperId: 'afg_2' },
-    { id: 'team_ban', name: 'Bangladesh', shortName: 'BAN', category: 'INTERNATIONAL', captainId: 'ban_1', wicketkeeperId: 'ban_2' },
-    { id: 'team_ire', name: 'Ireland', shortName: 'IRE', category: 'INTERNATIONAL', captainId: 'ire_1', wicketkeeperId: 'ire_3' },
-    { id: 'team_zim', name: 'Zimbabwe', shortName: 'ZIM', category: 'INTERNATIONAL', captainId: 'zim_1', wicketkeeperId: 'zim_3' },
+    // 12 ICC International Teams with Format-Specific Captains & Vice-Captains (T20 / ODI / TEST)
+    {
+      id: 'team_ind',
+      name: 'India',
+      shortName: 'IND',
+      category: 'INTERNATIONAL',
+      captainId: 'ind_1',
+      viceCaptainId: 'ind_7',
+      wicketkeeperId: 'ind_3',
+      formatLeadership: {
+        T20: { captainId: 'ind_1', viceCaptainId: 'ind_7', wicketkeeperId: 'ind_3' },
+        ODI: { captainId: 'ind_1', viceCaptainId: 'ind_7', wicketkeeperId: 'ind_5' },
+        TEST: { captainId: 'ind_1', viceCaptainId: 'ind_9', wicketkeeperId: 'ind_5' },
+      },
+    },
+    {
+      id: 'team_nz',
+      name: 'New Zealand',
+      shortName: 'NZ',
+      category: 'INTERNATIONAL',
+      captainId: 'nz_1',
+      viceCaptainId: 'nz_8',
+      wicketkeeperId: 'nz_3',
+      formatLeadership: {
+        T20: { captainId: 'nz_1', viceCaptainId: 'nz_8', wicketkeeperId: 'nz_3' },
+        ODI: { captainId: 'nz_1', viceCaptainId: 'nz_6', wicketkeeperId: 'nz_4' },
+        TEST: { captainId: 'nz_6', viceCaptainId: 'nz_12', wicketkeeperId: 'nz_4' },
+      },
+    },
+    {
+      id: 'team_aus',
+      name: 'Australia',
+      shortName: 'AUS',
+      category: 'INTERNATIONAL',
+      captainId: 'aus_1',
+      viceCaptainId: 'aus_2',
+      wicketkeeperId: 'aus_3',
+      formatLeadership: {
+        T20: { captainId: 'aus_1', viceCaptainId: 'aus_2', wicketkeeperId: 'aus_3' },
+        ODI: { captainId: 'aus_10', viceCaptainId: 'aus_1', wicketkeeperId: 'aus_3' },
+        TEST: { captainId: 'aus_10', viceCaptainId: 'aus_2', wicketkeeperId: 'aus_3' },
+      },
+    },
+    {
+      id: 'team_eng',
+      name: 'England',
+      shortName: 'ENG',
+      category: 'INTERNATIONAL',
+      captainId: 'eng_1',
+      viceCaptainId: 'eng_3',
+      wicketkeeperId: 'eng_2',
+      formatLeadership: {
+        T20: { captainId: 'eng_1', viceCaptainId: 'eng_3', wicketkeeperId: 'eng_2' },
+        ODI: { captainId: 'eng_1', viceCaptainId: 'eng_7', wicketkeeperId: 'eng_3' },
+        TEST: { captainId: 'eng_1', viceCaptainId: 'eng_9', wicketkeeperId: 'eng_8' },
+      },
+    },
+    {
+      id: 'team_sa',
+      name: 'South Africa',
+      shortName: 'SA',
+      category: 'INTERNATIONAL',
+      captainId: 'sa_1',
+      viceCaptainId: 'sa_3',
+      wicketkeeperId: 'sa_3',
+      formatLeadership: {
+        T20: { captainId: 'sa_1', viceCaptainId: 'sa_3', wicketkeeperId: 'sa_3' },
+        ODI: { captainId: 'sa_1', viceCaptainId: 'sa_5', wicketkeeperId: 'sa_3' },
+        TEST: { captainId: 'sa_1', viceCaptainId: 'sa_10', wicketkeeperId: 'sa_6' },
+      },
+    },
+    {
+      id: 'team_wi',
+      name: 'West Indies',
+      shortName: 'WI',
+      category: 'INTERNATIONAL',
+      captainId: 'wi_1',
+      viceCaptainId: 'wi_2',
+      wicketkeeperId: 'wi_2',
+      formatLeadership: {
+        T20: { captainId: 'wi_1', viceCaptainId: 'wi_2', wicketkeeperId: 'wi_2' },
+        ODI: { captainId: 'wi_3', viceCaptainId: 'wi_12', wicketkeeperId: 'wi_3' },
+        TEST: { captainId: 'wi_9', viceCaptainId: 'wi_12', wicketkeeperId: 'wi_3' },
+      },
+    },
+    {
+      id: 'team_pak',
+      name: 'Pakistan',
+      shortName: 'PAK',
+      category: 'INTERNATIONAL',
+      captainId: 'pak_1',
+      viceCaptainId: 'pak_8',
+      wicketkeeperId: 'pak_3',
+      formatLeadership: {
+        T20: { captainId: 'pak_1', viceCaptainId: 'pak_8', wicketkeeperId: 'pak_3' },
+        ODI: { captainId: 'pak_3', viceCaptainId: 'pak_1', wicketkeeperId: 'pak_3' },
+        TEST: { captainId: 'pak_3', viceCaptainId: 'pak_2', wicketkeeperId: 'pak_3' },
+      },
+    },
+    {
+      id: 'team_sl',
+      name: 'Sri Lanka',
+      shortName: 'SL',
+      category: 'INTERNATIONAL',
+      captainId: 'sl_1',
+      viceCaptainId: 'sl_7',
+      wicketkeeperId: 'sl_2',
+      formatLeadership: {
+        T20: { captainId: 'sl_1', viceCaptainId: 'sl_7', wicketkeeperId: 'sl_2' },
+        ODI: { captainId: 'sl_1', viceCaptainId: 'sl_2', wicketkeeperId: 'sl_2' },
+        TEST: { captainId: 'sl_5', viceCaptainId: 'sl_2', wicketkeeperId: 'sl_2' },
+      },
+    },
+    {
+      id: 'team_afg',
+      name: 'Afghanistan',
+      shortName: 'AFG',
+      category: 'INTERNATIONAL',
+      captainId: 'afg_1',
+      viceCaptainId: 'afg_3',
+      wicketkeeperId: 'afg_2',
+      formatLeadership: {
+        T20: { captainId: 'afg_1', viceCaptainId: 'afg_3', wicketkeeperId: 'afg_2' },
+        ODI: { captainId: 'afg_3', viceCaptainId: 'afg_1', wicketkeeperId: 'afg_2' },
+        TEST: { captainId: 'afg_3', viceCaptainId: 'afg_1', wicketkeeperId: 'afg_2' },
+      },
+    },
+    {
+      id: 'team_ban',
+      name: 'Bangladesh',
+      shortName: 'BAN',
+      category: 'INTERNATIONAL',
+      captainId: 'ban_1',
+      viceCaptainId: 'ban_7',
+      wicketkeeperId: 'ban_1',
+      formatLeadership: {
+        T20: { captainId: 'ban_1', viceCaptainId: 'ban_7', wicketkeeperId: 'ban_1' },
+        ODI: { captainId: 'ban_7', viceCaptainId: 'ban_10', wicketkeeperId: 'ban_1' },
+        TEST: { captainId: 'ban_7', viceCaptainId: 'ban_1', wicketkeeperId: 'ban_1' },
+      },
+    },
+    {
+      id: 'team_ire',
+      name: 'Ireland',
+      shortName: 'IRE',
+      category: 'INTERNATIONAL',
+      captainId: 'ire_1',
+      viceCaptainId: 'ire_3',
+      wicketkeeperId: 'ire_3',
+      formatLeadership: {
+        T20: { captainId: 'ire_1', viceCaptainId: 'ire_3', wicketkeeperId: 'ire_3' },
+        ODI: { captainId: 'ire_1', viceCaptainId: 'ire_4', wicketkeeperId: 'ire_3' },
+        TEST: { captainId: 'ire_2', viceCaptainId: 'ire_3', wicketkeeperId: 'ire_3' },
+      },
+    },
+    {
+      id: 'team_zim',
+      name: 'Zimbabwe',
+      shortName: 'ZIM',
+      category: 'INTERNATIONAL',
+      captainId: 'zim_1',
+      viceCaptainId: 'zim_6',
+      wicketkeeperId: 'zim_3',
+      formatLeadership: {
+        T20: { captainId: 'zim_1', viceCaptainId: 'zim_6', wicketkeeperId: 'zim_3' },
+        ODI: { captainId: 'zim_1', viceCaptainId: 'zim_3', wicketkeeperId: 'zim_3' },
+        TEST: { captainId: 'zim_1', viceCaptainId: 'zim_10', wicketkeeperId: 'zim_3' },
+      },
+    },
 
     // 10 IPL Franchises (22-Member Squads)
-    { id: 'ipl_rcb', name: 'Royal Challengers Bengaluru', shortName: 'RCB', category: 'IPL', captainId: 'rcb_3', wicketkeeperId: 'rcb_1' },
-    { id: 'ipl_gt', name: 'Gujarat Titans', shortName: 'GT', category: 'IPL', captainId: 'gt_1', wicketkeeperId: 'gt_3' },
-    { id: 'ipl_csk', name: 'Chennai Super Kings', shortName: 'CSK', category: 'IPL', captainId: 'csk_1', wicketkeeperId: 'csk_2' },
-    { id: 'ipl_mi', name: 'Mumbai Indians', shortName: 'MI', category: 'IPL', captainId: 'mi_5', wicketkeeperId: 'mi_2' },
-    { id: 'ipl_kkr', name: 'Kolkata Knight Riders', shortName: 'KKR', category: 'IPL', captainId: 'kkr_1', wicketkeeperId: 'kkr_2' },
-    { id: 'ipl_srh', name: 'Sunrisers Hyderabad', shortName: 'SRH', category: 'IPL', captainId: 'srh_8', wicketkeeperId: 'srh_3' },
-    { id: 'ipl_rr', name: 'Rajasthan Royals', shortName: 'RR', category: 'IPL', captainId: 'rr_4', wicketkeeperId: 'rr_3' },
-    { id: 'ipl_dc', name: 'Delhi Capitals', shortName: 'DC', category: 'IPL', captainId: 'dc_6', wicketkeeperId: 'dc_1' },
-    { id: 'ipl_pbks', name: 'Punjab Kings', shortName: 'PBKS', category: 'IPL', captainId: 'pbks_3', wicketkeeperId: 'pbks_2' },
-    { id: 'ipl_lsg', name: 'Lucknow Super Giants', shortName: 'LSG', category: 'IPL', captainId: 'lsg_4', wicketkeeperId: 'lsg_4' },
+    { id: 'ipl_rcb', name: 'Royal Challengers Bengaluru', shortName: 'RCB', category: 'IPL', captainId: 'rcb_3', viceCaptainId: 'rcb_2', wicketkeeperId: 'rcb_1' },
+    { id: 'ipl_gt', name: 'Gujarat Titans', shortName: 'GT', category: 'IPL', captainId: 'gt_1', viceCaptainId: 'gt_8', wicketkeeperId: 'gt_3' },
+    { id: 'ipl_csk', name: 'Chennai Super Kings', shortName: 'CSK', category: 'IPL', captainId: 'csk_1', viceCaptainId: 'csk_2', wicketkeeperId: 'csk_2' },
+    { id: 'ipl_mi', name: 'Mumbai Indians', shortName: 'MI', category: 'IPL', captainId: 'mi_5', viceCaptainId: 'mi_3', wicketkeeperId: 'mi_2' },
+    { id: 'ipl_kkr', name: 'Kolkata Knight Riders', shortName: 'KKR', category: 'IPL', captainId: 'kkr_1', viceCaptainId: 'kkr_7', wicketkeeperId: 'kkr_2' },
+    { id: 'ipl_srh', name: 'Sunrisers Hyderabad', shortName: 'SRH', category: 'IPL', captainId: 'srh_8', viceCaptainId: 'srh_2', wicketkeeperId: 'srh_3' },
+    { id: 'ipl_rr', name: 'Rajasthan Royals', shortName: 'RR', category: 'IPL', captainId: 'rr_4', viceCaptainId: 'rr_1', wicketkeeperId: 'rr_3' },
+    { id: 'ipl_dc', name: 'Delhi Capitals', shortName: 'DC', category: 'IPL', captainId: 'dc_6', viceCaptainId: 'dc_1', wicketkeeperId: 'dc_1' },
+    { id: 'ipl_pbks', name: 'Punjab Kings', shortName: 'PBKS', category: 'IPL', captainId: 'pbks_3', viceCaptainId: 'pbks_6', wicketkeeperId: 'pbks_2' },
+    { id: 'ipl_lsg', name: 'Lucknow Super Giants', shortName: 'LSG', category: 'IPL', captainId: 'lsg_4', viceCaptainId: 'lsg_3', wicketkeeperId: 'lsg_4' },
   ];
 
   const players: Player[] = [
+    // ================= INTERNATIONAL SQUADS =================
     // 1. India (16)
     createEmptyPlayer('ind_1', 'team_ind', 'Shreyas Iyer', 'BATTER', { isCaptain: true, bowlingStyle: 'OB' }),
     createEmptyPlayer('ind_2', 'team_ind', 'Abhishek Sharma', 'ALL_ROUNDER', { bowlingStyle: 'SLA' }),
@@ -120,7 +279,7 @@ async function runSeed(): Promise<void> {
     createEmptyPlayer('ind_4', 'team_ind', 'Vaibhav Sooryavanshi', 'BATTER', { bowlingStyle: 'SLA' }),
     createEmptyPlayer('ind_5', 'team_ind', 'Ishan Kishan', 'WICKETKEEPER', { isWicketkeeper: true, bowlingStyle: 'RM' }),
     createEmptyPlayer('ind_6', 'team_ind', 'Tilak Varma', 'BATTER', { bowlingStyle: 'OB' }),
-    createEmptyPlayer('ind_7', 'team_ind', 'Axar Patel', 'ALL_ROUNDER', { bowlingStyle: 'SLA' }),
+    createEmptyPlayer('ind_7', 'team_ind', 'Axar Patel', 'ALL_ROUNDER', { isViceCaptain: true, bowlingStyle: 'SLA' }),
     createEmptyPlayer('ind_8', 'team_ind', 'Shivam Dube', 'ALL_ROUNDER', { bowlingStyle: 'RM' }),
     createEmptyPlayer('ind_9', 'team_ind', 'Nitish Kumar Reddy', 'ALL_ROUNDER', { bowlingStyle: 'RFM' }),
     createEmptyPlayer('ind_10', 'team_ind', 'Naman Dhir', 'ALL_ROUNDER', { bowlingStyle: 'OB' }),
@@ -139,7 +298,7 @@ async function runSeed(): Promise<void> {
     createEmptyPlayer('nz_5', 'team_nz', 'Glenn Phillips', 'ALL_ROUNDER', { bowlingStyle: 'OB' }),
     createEmptyPlayer('nz_6', 'team_nz', 'Daryl Mitchell', 'ALL_ROUNDER', { bowlingStyle: 'RM' }),
     createEmptyPlayer('nz_7', 'team_nz', 'Mark Chapman', 'BATTER', { bowlingStyle: 'SLA' }),
-    createEmptyPlayer('nz_8', 'team_nz', 'Michael Bracewell', 'ALL_ROUNDER', { bowlingStyle: 'OB' }),
+    createEmptyPlayer('nz_8', 'team_nz', 'Michael Bracewell', 'ALL_ROUNDER', { isViceCaptain: true, bowlingStyle: 'OB' }),
     createEmptyPlayer('nz_9', 'team_nz', 'Bevon Jacobs', 'BATTER', { bowlingStyle: 'RM' }),
     createEmptyPlayer('nz_10', 'team_nz', 'Zak Foulkes', 'ALL_ROUNDER', { bowlingStyle: 'RFM' }),
     createEmptyPlayer('nz_11', 'team_nz', 'Nathan Smith', 'ALL_ROUNDER', { bowlingStyle: 'RFM' }),
@@ -151,7 +310,7 @@ async function runSeed(): Promise<void> {
 
     // 3. Australia (15)
     createEmptyPlayer('aus_1', 'team_aus', 'Mitchell Marsh', 'ALL_ROUNDER', { isCaptain: true, bowlingStyle: 'RFM' }),
-    createEmptyPlayer('aus_2', 'team_aus', 'Travis Head', 'BATTER', { bowlingStyle: 'OB' }),
+    createEmptyPlayer('aus_2', 'team_aus', 'Travis Head', 'BATTER', { isViceCaptain: true, bowlingStyle: 'OB' }),
     createEmptyPlayer('aus_3', 'team_aus', 'Josh Inglis', 'WICKETKEEPER', { isWicketkeeper: true, bowlingStyle: 'RM' }),
     createEmptyPlayer('aus_4', 'team_aus', 'Glenn Maxwell', 'ALL_ROUNDER', { bowlingStyle: 'OB' }),
     createEmptyPlayer('aus_5', 'team_aus', 'Marcus Stoinis', 'ALL_ROUNDER', { bowlingStyle: 'RM' }),
@@ -169,7 +328,7 @@ async function runSeed(): Promise<void> {
     // 4. England (15)
     createEmptyPlayer('eng_1', 'team_eng', 'Harry Brook', 'BATTER', { isCaptain: true, bowlingStyle: 'RM' }),
     createEmptyPlayer('eng_2', 'team_eng', 'Phil Salt', 'WICKETKEEPER', { isWicketkeeper: true, bowlingStyle: 'RM' }),
-    createEmptyPlayer('eng_3', 'team_eng', 'Jos Buttler', 'WICKETKEEPER', { isWicketkeeper: true, bowlingStyle: 'RM' }),
+    createEmptyPlayer('eng_3', 'team_eng', 'Jos Buttler', 'WICKETKEEPER', { isViceCaptain: true, isWicketkeeper: true, bowlingStyle: 'RM' }),
     createEmptyPlayer('eng_4', 'team_eng', 'Will Jacks', 'ALL_ROUNDER', { bowlingStyle: 'OB' }),
     createEmptyPlayer('eng_5', 'team_eng', 'Liam Livingstone', 'ALL_ROUNDER', { bowlingStyle: 'LB' }),
     createEmptyPlayer('eng_6', 'team_eng', 'Jacob Bethell', 'ALL_ROUNDER', { bowlingStyle: 'SLA' }),
@@ -186,7 +345,7 @@ async function runSeed(): Promise<void> {
     // 5. South Africa (15)
     createEmptyPlayer('sa_1', 'team_sa', 'Aiden Markram', 'ALL_ROUNDER', { isCaptain: true, bowlingStyle: 'OB' }),
     createEmptyPlayer('sa_2', 'team_sa', 'Reeza Hendricks', 'BATTER', { bowlingStyle: 'OB' }),
-    createEmptyPlayer('sa_3', 'team_sa', 'Heinrich Klaasen', 'WICKETKEEPER', { isWicketkeeper: true, bowlingStyle: 'OB' }),
+    createEmptyPlayer('sa_3', 'team_sa', 'Heinrich Klaasen', 'WICKETKEEPER', { isViceCaptain: true, isWicketkeeper: true, bowlingStyle: 'OB' }),
     createEmptyPlayer('sa_4', 'team_sa', 'Tristan Stubbs', 'WICKETKEEPER', { isWicketkeeper: true, bowlingStyle: 'OB' }),
     createEmptyPlayer('sa_5', 'team_sa', 'David Miller', 'BATTER', { bowlingStyle: 'OB' }),
     createEmptyPlayer('sa_6', 'team_sa', 'Ryan Rickelton', 'WICKETKEEPER', { isWicketkeeper: true, bowlingStyle: 'RM' }),
@@ -202,7 +361,7 @@ async function runSeed(): Promise<void> {
 
     // 6. West Indies (15)
     createEmptyPlayer('wi_1', 'team_wi', 'Rovman Powell', 'BATTER', { isCaptain: true, bowlingStyle: 'RM' }),
-    createEmptyPlayer('wi_2', 'team_wi', 'Nicholas Pooran', 'WICKETKEEPER', { isWicketkeeper: true, bowlingStyle: 'OB' }),
+    createEmptyPlayer('wi_2', 'team_wi', 'Nicholas Pooran', 'WICKETKEEPER', { isViceCaptain: true, isWicketkeeper: true, bowlingStyle: 'OB' }),
     createEmptyPlayer('wi_3', 'team_wi', 'Shai Hope', 'WICKETKEEPER', { isWicketkeeper: true, bowlingStyle: 'RM' }),
     createEmptyPlayer('wi_4', 'team_wi', 'Brandon King', 'BATTER', { bowlingStyle: 'RM' }),
     createEmptyPlayer('wi_5', 'team_wi', 'Shimron Hetmyer', 'BATTER', { bowlingStyle: 'RM' }),
@@ -225,7 +384,7 @@ async function runSeed(): Promise<void> {
     createEmptyPlayer('pak_5', 'team_pak', 'Saim Ayub', 'ALL_ROUNDER', { bowlingStyle: 'OB' }),
     createEmptyPlayer('pak_6', 'team_pak', 'Usman Khan', 'WICKETKEEPER', { isWicketkeeper: true, bowlingStyle: 'RM' }),
     createEmptyPlayer('pak_7', 'team_pak', 'Iftikhar Ahmed', 'ALL_ROUNDER', { bowlingStyle: 'OB' }),
-    createEmptyPlayer('pak_8', 'team_pak', 'Shadab Khan', 'ALL_ROUNDER', { bowlingStyle: 'LB' }),
+    createEmptyPlayer('pak_8', 'team_pak', 'Shadab Khan', 'ALL_ROUNDER', { isViceCaptain: true, bowlingStyle: 'LB' }),
     createEmptyPlayer('pak_9', 'team_pak', 'Jahandad Khan', 'ALL_ROUNDER', { bowlingStyle: 'LFM' }),
     createEmptyPlayer('pak_10', 'team_pak', 'Shaheen Shah Afridi', 'BOWLER', { bowlingStyle: 'LF' }),
     createEmptyPlayer('pak_11', 'team_pak', 'Naseem Shah', 'BOWLER', { bowlingStyle: 'RF' }),
@@ -241,7 +400,7 @@ async function runSeed(): Promise<void> {
     createEmptyPlayer('sl_4', 'team_sl', 'Kusal Perera', 'WICKETKEEPER', { isWicketkeeper: true, bowlingStyle: 'RM' }),
     createEmptyPlayer('sl_5', 'team_sl', 'Kamindu Mendis', 'ALL_ROUNDER', { bowlingStyle: 'OB' }),
     createEmptyPlayer('sl_6', 'team_sl', 'Avishka Fernando', 'BATTER', { bowlingStyle: 'RM' }),
-    createEmptyPlayer('sl_7', 'team_sl', 'Wanindu Hasaranga', 'ALL_ROUNDER', { bowlingStyle: 'LB' }),
+    createEmptyPlayer('sl_7', 'team_sl', 'Wanindu Hasaranga', 'ALL_ROUNDER', { isViceCaptain: true, bowlingStyle: 'LB' }),
     createEmptyPlayer('sl_8', 'team_sl', 'Dasun Shanaka', 'ALL_ROUNDER', { bowlingStyle: 'RM' }),
     createEmptyPlayer('sl_9', 'team_sl', 'Dunith Wellalage', 'ALL_ROUNDER', { bowlingStyle: 'SLA' }),
     createEmptyPlayer('sl_10', 'team_sl', 'Maheesh Theekshana', 'BOWLER', { bowlingStyle: 'OB' }),
@@ -254,7 +413,7 @@ async function runSeed(): Promise<void> {
     // 9. Afghanistan (15)
     createEmptyPlayer('afg_1', 'team_afg', 'Rashid Khan', 'BOWLER', { isCaptain: true, bowlingStyle: 'LB' }),
     createEmptyPlayer('afg_2', 'team_afg', 'Rahmanullah Gurbaz', 'WICKETKEEPER', { isWicketkeeper: true, bowlingStyle: 'RM' }),
-    createEmptyPlayer('afg_3', 'team_afg', 'Ibrahim Zadran', 'BATTER', { bowlingStyle: 'RM' }),
+    createEmptyPlayer('afg_3', 'team_afg', 'Ibrahim Zadran', 'BATTER', { isViceCaptain: true, bowlingStyle: 'RM' }),
     createEmptyPlayer('afg_4', 'team_afg', 'Sediqullah Atal', 'BATTER', { bowlingStyle: 'RM' }),
     createEmptyPlayer('afg_5', 'team_afg', 'Azmatullah Omarzai', 'ALL_ROUNDER', { bowlingStyle: 'RFM' }),
     createEmptyPlayer('afg_6', 'team_afg', 'Mohammad Nabi', 'ALL_ROUNDER', { bowlingStyle: 'OB' }),
@@ -275,7 +434,7 @@ async function runSeed(): Promise<void> {
     createEmptyPlayer('ban_4', 'team_ban', 'Jaker Ali', 'WICKETKEEPER', { isWicketkeeper: true, bowlingStyle: 'RM' }),
     createEmptyPlayer('ban_5', 'team_ban', 'Parvez Hossain Emon', 'BATTER', { bowlingStyle: 'RM' }),
     createEmptyPlayer('ban_6', 'team_ban', 'Shamim Hossain', 'ALL_ROUNDER', { bowlingStyle: 'OB' }),
-    createEmptyPlayer('ban_7', 'team_ban', 'Mehidy Hasan Miraz', 'ALL_ROUNDER', { bowlingStyle: 'OB' }),
+    createEmptyPlayer('ban_7', 'team_ban', 'Mehidy Hasan Miraz', 'ALL_ROUNDER', { isViceCaptain: true, bowlingStyle: 'OB' }),
     createEmptyPlayer('ban_8', 'team_ban', 'Mahedi Hasan', 'ALL_ROUNDER', { bowlingStyle: 'OB' }),
     createEmptyPlayer('ban_9', 'team_ban', 'Rishad Hossain', 'ALL_ROUNDER', { bowlingStyle: 'LB' }),
     createEmptyPlayer('ban_10', 'team_ban', 'Taskin Ahmed', 'BOWLER', { bowlingStyle: 'RF' }),
@@ -288,7 +447,7 @@ async function runSeed(): Promise<void> {
     // 11. Ireland (15)
     createEmptyPlayer('ire_1', 'team_ire', 'Paul Stirling', 'BATTER', { isCaptain: true, bowlingStyle: 'OB' }),
     createEmptyPlayer('ire_2', 'team_ire', 'Andrew Balbirnie', 'BATTER', { bowlingStyle: 'OB' }),
-    createEmptyPlayer('ire_3', 'team_ire', 'Lorcan Tucker', 'WICKETKEEPER', { isWicketkeeper: true, bowlingStyle: 'RM' }),
+    createEmptyPlayer('ire_3', 'team_ire', 'Lorcan Tucker', 'WICKETKEEPER', { isViceCaptain: true, isWicketkeeper: true, bowlingStyle: 'RM' }),
     createEmptyPlayer('ire_4', 'team_ire', 'Harry Tector', 'BATTER', { bowlingStyle: 'OB' }),
     createEmptyPlayer('ire_5', 'team_ire', 'Ross Adair', 'BATTER', { bowlingStyle: 'SLA' }),
     createEmptyPlayer('ire_6', 'team_ire', 'Curtis Campher', 'ALL_ROUNDER', { bowlingStyle: 'RFM' }),
@@ -308,7 +467,7 @@ async function runSeed(): Promise<void> {
     createEmptyPlayer('zim_3', 'team_zim', 'Clive Madande', 'WICKETKEEPER', { isWicketkeeper: true, bowlingStyle: 'RM' }),
     createEmptyPlayer('zim_4', 'team_zim', 'Tadiwanashe Marumani', 'WICKETKEEPER', { isWicketkeeper: true, bowlingStyle: 'RM' }),
     createEmptyPlayer('zim_5', 'team_zim', 'Dion Myers', 'BATTER', { bowlingStyle: 'RM' }),
-    createEmptyPlayer('zim_6', 'team_zim', 'Ryan Burl', 'ALL_ROUNDER', { bowlingStyle: 'LB' }),
+    createEmptyPlayer('zim_6', 'team_zim', 'Ryan Burl', 'ALL_ROUNDER', { isViceCaptain: true, bowlingStyle: 'LB' }),
     createEmptyPlayer('zim_7', 'team_zim', 'Wessly Madhevere', 'ALL_ROUNDER', { bowlingStyle: 'OB' }),
     createEmptyPlayer('zim_8', 'team_zim', 'Tashinga Musekiwa', 'ALL_ROUNDER', { bowlingStyle: 'RM' }),
     createEmptyPlayer('zim_9', 'team_zim', 'Jonathan Campbell', 'BATTER', { bowlingStyle: 'LB' }),
@@ -322,7 +481,7 @@ async function runSeed(): Promise<void> {
     // ================= IPL 2026 FRANCHISES (22-MEMBER SQUADS) =================
     // 1. Royal Challengers Bengaluru
     createEmptyPlayer('rcb_1', 'ipl_rcb', 'Phil Salt', 'WICKETKEEPER', { isWicketkeeper: true, isOverseas: true, bowlingStyle: 'RM' }),
-    createEmptyPlayer('rcb_2', 'ipl_rcb', 'Virat Kohli', 'BATTER', { bowlingStyle: 'RM' }),
+    createEmptyPlayer('rcb_2', 'ipl_rcb', 'Virat Kohli', 'BATTER', { isViceCaptain: true, bowlingStyle: 'RM' }),
     createEmptyPlayer('rcb_3', 'ipl_rcb', 'Rajat Patidar', 'BATTER', { isCaptain: true, bowlingStyle: 'OB' }),
     createEmptyPlayer('rcb_4', 'ipl_rcb', 'Venkatesh Iyer', 'ALL_ROUNDER', { bowlingStyle: 'RM' }),
     createEmptyPlayer('rcb_5', 'ipl_rcb', 'Devdutt Padikkal', 'BATTER', { bowlingStyle: 'OB' }),
@@ -352,7 +511,7 @@ async function runSeed(): Promise<void> {
     createEmptyPlayer('gt_5', 'ipl_gt', 'Shahrukh Khan', 'BATTER', { bowlingStyle: 'OB' }),
     createEmptyPlayer('gt_6', 'ipl_gt', 'Rahul Tewatia', 'ALL_ROUNDER', { bowlingStyle: 'LB' }),
     createEmptyPlayer('gt_7', 'ipl_gt', 'Jason Holder', 'ALL_ROUNDER', { isOverseas: true, bowlingStyle: 'RFM' }),
-    createEmptyPlayer('gt_8', 'ipl_gt', 'Rashid Khan', 'ALL_ROUNDER', { isOverseas: true, bowlingStyle: 'LB' }),
+    createEmptyPlayer('gt_8', 'ipl_gt', 'Rashid Khan', 'ALL_ROUNDER', { isViceCaptain: true, isOverseas: true, bowlingStyle: 'LB' }),
     createEmptyPlayer('gt_9', 'ipl_gt', 'Kagiso Rabada', 'BOWLER', { isOverseas: true, bowlingStyle: 'RF' }),
     createEmptyPlayer('gt_10', 'ipl_gt', 'Mohammed Siraj', 'BOWLER', { bowlingStyle: 'RF' }),
     createEmptyPlayer('gt_11', 'ipl_gt', 'Prasidh Krishna', 'BOWLER', { bowlingStyle: 'RFM' }),
@@ -370,7 +529,7 @@ async function runSeed(): Promise<void> {
 
     // 3. Chennai Super Kings
     createEmptyPlayer('csk_1', 'ipl_csk', 'Ruturaj Gaikwad', 'BATTER', { isCaptain: true, bowlingStyle: 'OB' }),
-    createEmptyPlayer('csk_2', 'ipl_csk', 'Sanju Samson', 'WICKETKEEPER', { isWicketkeeper: true, bowlingStyle: 'RM' }),
+    createEmptyPlayer('csk_2', 'ipl_csk', 'Sanju Samson', 'WICKETKEEPER', { isViceCaptain: true, isWicketkeeper: true, bowlingStyle: 'RM' }),
     createEmptyPlayer('csk_3', 'ipl_csk', 'Dewald Brevis', 'BATTER', { isOverseas: true, bowlingStyle: 'LB' }),
     createEmptyPlayer('csk_4', 'ipl_csk', 'Shivam Dube', 'ALL_ROUNDER', { bowlingStyle: 'RM' }),
     createEmptyPlayer('csk_5', 'ipl_csk', 'Matthew Short', 'ALL_ROUNDER', { isOverseas: true, bowlingStyle: 'OB' }),
@@ -395,7 +554,7 @@ async function runSeed(): Promise<void> {
     // 4. Mumbai Indians
     createEmptyPlayer('mi_1', 'ipl_mi', 'Rohit Sharma', 'BATTER', { bowlingStyle: 'OB' }),
     createEmptyPlayer('mi_2', 'ipl_mi', 'Ryan Rickelton', 'WICKETKEEPER', { isWicketkeeper: true, isOverseas: true, bowlingStyle: 'RM' }),
-    createEmptyPlayer('mi_3', 'ipl_mi', 'Suryakumar Yadav', 'BATTER', { bowlingStyle: 'RM' }),
+    createEmptyPlayer('mi_3', 'ipl_mi', 'Suryakumar Yadav', 'BATTER', { isViceCaptain: true, bowlingStyle: 'RM' }),
     createEmptyPlayer('mi_4', 'ipl_mi', 'Tilak Varma', 'BATTER', { bowlingStyle: 'OB' }),
     createEmptyPlayer('mi_5', 'ipl_mi', 'Hardik Pandya', 'ALL_ROUNDER', { isCaptain: true, bowlingStyle: 'RFM' }),
     createEmptyPlayer('mi_6', 'ipl_mi', 'Will Jacks', 'ALL_ROUNDER', { isOverseas: true, bowlingStyle: 'OB' }),
@@ -423,7 +582,7 @@ async function runSeed(): Promise<void> {
     createEmptyPlayer('kkr_4', 'ipl_kkr', 'Cameron Green', 'ALL_ROUNDER', { isOverseas: true, bowlingStyle: 'RFM' }),
     createEmptyPlayer('kkr_5', 'ipl_kkr', 'Rinku Singh', 'BATTER', { bowlingStyle: 'OB' }),
     createEmptyPlayer('kkr_6', 'ipl_kkr', 'Ramandeep Singh', 'ALL_ROUNDER', { bowlingStyle: 'RM' }),
-    createEmptyPlayer('kkr_7', 'ipl_kkr', 'Sunil Narine', 'ALL_ROUNDER', { isOverseas: true, bowlingStyle: 'OB' }),
+    createEmptyPlayer('kkr_7', 'ipl_kkr', 'Sunil Narine', 'ALL_ROUNDER', { isViceCaptain: true, isOverseas: true, bowlingStyle: 'OB' }),
     createEmptyPlayer('kkr_8', 'ipl_kkr', 'Harshit Rana', 'BOWLER', { bowlingStyle: 'RF' }),
     createEmptyPlayer('kkr_9', 'ipl_kkr', 'Varun Chakaravarthy', 'BOWLER', { bowlingStyle: 'LB' }),
     createEmptyPlayer('kkr_10', 'ipl_kkr', 'Matheesha Pathirana', 'BOWLER', { isOverseas: true, bowlingStyle: 'RF' }),
@@ -442,7 +601,7 @@ async function runSeed(): Promise<void> {
 
     // 6. Sunrisers Hyderabad
     createEmptyPlayer('srh_1', 'ipl_srh', 'Travis Head', 'BATTER', { isOverseas: true, bowlingStyle: 'OB' }),
-    createEmptyPlayer('srh_2', 'ipl_srh', 'Abhishek Sharma', 'ALL_ROUNDER', { bowlingStyle: 'SLA' }),
+    createEmptyPlayer('srh_2', 'ipl_srh', 'Abhishek Sharma', 'ALL_ROUNDER', { isViceCaptain: true, bowlingStyle: 'SLA' }),
     createEmptyPlayer('srh_3', 'ipl_srh', 'Ishan Kishan', 'WICKETKEEPER', { isWicketkeeper: true, bowlingStyle: 'RM' }),
     createEmptyPlayer('srh_4', 'ipl_srh', 'Heinrich Klaasen', 'WICKETKEEPER', { isWicketkeeper: true, isOverseas: true, bowlingStyle: 'OB' }),
     createEmptyPlayer('srh_5', 'ipl_srh', 'Nitish Kumar Reddy', 'ALL_ROUNDER', { bowlingStyle: 'RFM' }),
@@ -465,7 +624,7 @@ async function runSeed(): Promise<void> {
     createEmptyPlayer('srh_22', 'ipl_srh', 'Onkar Tarmale', 'BOWLER', { bowlingStyle: 'RFM' }),
 
     // 7. Rajasthan Royals
-    createEmptyPlayer('rr_1', 'ipl_rr', 'Yashasvi Jaiswal', 'BATTER', { bowlingStyle: 'LB' }),
+    createEmptyPlayer('rr_1', 'ipl_rr', 'Yashasvi Jaiswal', 'BATTER', { isViceCaptain: true, bowlingStyle: 'LB' }),
     createEmptyPlayer('rr_2', 'ipl_rr', 'Vaibhav Sooryavanshi', 'BATTER', { bowlingStyle: 'SLA' }),
     createEmptyPlayer('rr_3', 'ipl_rr', 'Dhruv Jurel', 'WICKETKEEPER', { isWicketkeeper: true, bowlingStyle: 'RM' }),
     createEmptyPlayer('rr_4', 'ipl_rr', 'Riyan Parag', 'ALL_ROUNDER', { isCaptain: true, bowlingStyle: 'OB' }),
@@ -489,7 +648,7 @@ async function runSeed(): Promise<void> {
     createEmptyPlayer('rr_22', 'ipl_rr', 'Yash Raj Punia', 'BOWLER', { bowlingStyle: 'LB' }),
 
     // 8. Delhi Capitals
-    createEmptyPlayer('dc_1', 'ipl_dc', 'KL Rahul', 'WICKETKEEPER', { isWicketkeeper: true, bowlingStyle: 'RM' }),
+    createEmptyPlayer('dc_1', 'ipl_dc', 'KL Rahul', 'WICKETKEEPER', { isViceCaptain: true, isWicketkeeper: true, bowlingStyle: 'RM' }),
     createEmptyPlayer('dc_2', 'ipl_dc', 'Pathum Nissanka', 'BATTER', { isOverseas: true, bowlingStyle: 'RM' }),
     createEmptyPlayer('dc_3', 'ipl_dc', 'Abishek Porel', 'WICKETKEEPER', { isWicketkeeper: true, bowlingStyle: 'RM' }),
     createEmptyPlayer('dc_4', 'ipl_dc', 'Tristan Stubbs', 'WICKETKEEPER', { isWicketkeeper: true, isOverseas: true, bowlingStyle: 'OB' }),
@@ -518,7 +677,7 @@ async function runSeed(): Promise<void> {
     createEmptyPlayer('pbks_3', 'ipl_pbks', 'Shreyas Iyer', 'BATTER', { isCaptain: true, bowlingStyle: 'OB' }),
     createEmptyPlayer('pbks_4', 'ipl_pbks', 'Nehal Wadhera', 'BATTER', { bowlingStyle: 'LB' }),
     createEmptyPlayer('pbks_5', 'ipl_pbks', 'Marcus Stoinis', 'ALL_ROUNDER', { isOverseas: true, bowlingStyle: 'RM' }),
-    createEmptyPlayer('pbks_6', 'ipl_pbks', 'Shashank Singh', 'ALL_ROUNDER', { bowlingStyle: 'RM' }),
+    createEmptyPlayer('pbks_6', 'ipl_pbks', 'Shashank Singh', 'ALL_ROUNDER', { isViceCaptain: true, bowlingStyle: 'RM' }),
     createEmptyPlayer('pbks_7', 'ipl_pbks', 'Marco Jansen', 'ALL_ROUNDER', { isOverseas: true, bowlingStyle: 'LF' }),
     createEmptyPlayer('pbks_8', 'ipl_pbks', 'Azmatullah Omarzai', 'ALL_ROUNDER', { isOverseas: true, bowlingStyle: 'RFM' }),
     createEmptyPlayer('pbks_9', 'ipl_pbks', 'Harpreet Brar', 'BOWLER', { bowlingStyle: 'SLA' }),
@@ -539,7 +698,7 @@ async function runSeed(): Promise<void> {
     // 10. Lucknow Super Giants
     createEmptyPlayer('lsg_1', 'ipl_lsg', 'Mitchell Marsh', 'ALL_ROUNDER', { isOverseas: true, bowlingStyle: 'RFM' }),
     createEmptyPlayer('lsg_2', 'ipl_lsg', 'Aiden Markram', 'ALL_ROUNDER', { isOverseas: true, bowlingStyle: 'OB' }),
-    createEmptyPlayer('lsg_3', 'ipl_lsg', 'Nicholas Pooran', 'WICKETKEEPER', { isWicketkeeper: true, isOverseas: true, bowlingStyle: 'OB' }),
+    createEmptyPlayer('lsg_3', 'ipl_lsg', 'Nicholas Pooran', 'WICKETKEEPER', { isViceCaptain: true, isWicketkeeper: true, isOverseas: true, bowlingStyle: 'OB' }),
     createEmptyPlayer('lsg_4', 'ipl_lsg', 'Rishabh Pant', 'WICKETKEEPER', { isCaptain: true, isWicketkeeper: true, bowlingStyle: 'RM' }),
     createEmptyPlayer('lsg_5', 'ipl_lsg', 'Ayush Badoni', 'ALL_ROUNDER', { bowlingStyle: 'OB' }),
     createEmptyPlayer('lsg_6', 'ipl_lsg', 'Abdul Samad', 'BATTER', { bowlingStyle: 'LB' }),
@@ -571,8 +730,17 @@ async function runSeed(): Promise<void> {
       const existing = existingTeamMap.get(t.id);
       if (!existing) {
         missingTeams.push(t);
-      } else if (!existing.category && t.category) {
-        updatedTeams.push({ ...existing, category: t.category });
+      } else if (
+        (!existing.category && t.category) ||
+        (!existing.viceCaptainId && t.viceCaptainId) ||
+        (!existing.formatLeadership && t.formatLeadership)
+      ) {
+        updatedTeams.push({
+          ...existing,
+          category: existing.category ?? t.category,
+          viceCaptainId: existing.viceCaptainId ?? t.viceCaptainId,
+          formatLeadership: existing.formatLeadership ?? t.formatLeadership,
+        });
       }
     }
 
@@ -581,7 +749,7 @@ async function runSeed(): Promise<void> {
 
     const existingPlayers = await db.players.toArray();
 
-    // Purge any accidental duplicate player rows within the same team
+    // Purge any duplicate player rows within the same team
     const seenTeamNameKeys = new Set<string>();
     const duplicateIdsToDelete: string[] = [];
     const existingPlayerMap = new Map<string, Player>();
@@ -615,11 +783,14 @@ async function runSeed(): Promise<void> {
         const needsStyle = !existing.bowlingStyle && p.bowlingStyle;
         const needsOverseas =
           existing.isOverseas === undefined && p.isOverseas !== undefined;
-        if (needsStyle || needsOverseas) {
+        const needsVC =
+          existing.isViceCaptain === undefined && p.isViceCaptain !== undefined;
+        if (needsStyle || needsOverseas || needsVC) {
           updatedPlayers.push({
             ...existing,
             bowlingStyle: existing.bowlingStyle ?? p.bowlingStyle,
             isOverseas: existing.isOverseas ?? p.isOverseas,
+            isViceCaptain: existing.isViceCaptain ?? p.isViceCaptain,
           });
         }
       }

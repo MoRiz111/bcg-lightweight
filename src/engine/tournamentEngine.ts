@@ -39,31 +39,59 @@ export const TOURNAMENT_PRESETS: TournamentPreset[] = [
   },
 ];
 
+// Generates round-robin fixtures using the circle rotation method so no team plays back-to-back matches
 function buildRoundRobinFixtures(teamIds: string[]): TournamentFixture[] {
+  const teams = [...teamIds];
+  if (teams.length % 2 === 1) {
+    teams.push('BYE');
+  }
+
+  const n = teams.length;
+  const totalRounds = n - 1;
+  const half = n / 2;
   const fixtures: TournamentFixture[] = [];
   let matchNumber = 1;
+  let lastPlayedTeams = new Set<string>();
 
-  for (let i = 0; i < teamIds.length; i++) {
-    for (let j = i + 1; j < teamIds.length; j++) {
+  for (let round = 0; round < totalRounds; round++) {
+    const roundPairs: [string, string][] = [];
+
+    for (let i = 0; i < half; i++) {
+      const home = teams[i];
+      const away = teams[n - 1 - i];
+      if (home !== 'BYE' && away !== 'BYE') {
+        roundPairs.push(round % 2 === 0 ? [home, away] : [away, home]);
+      }
+    }
+
+    // Order matches within this round so the first match avoids teams that played at the end of the previous round
+    roundPairs.sort((a, b) => {
+      const aOverlap =
+        (lastPlayedTeams.has(a[0]) ? 1 : 0) + (lastPlayedTeams.has(a[1]) ? 1 : 0);
+      const bOverlap =
+        (lastPlayedTeams.has(b[0]) ? 1 : 0) + (lastPlayedTeams.has(b[1]) ? 1 : 0);
+      return aOverlap - bOverlap;
+    });
+
+    for (const [tA, tB] of roundPairs) {
       fixtures.push({
-        id: `fix_${matchNumber}_${Date.now()}`,
+        id: `fix_${matchNumber}_${Date.now() + matchNumber}`,
         matchNumber,
         stage: 'GROUP',
-        teamAId: teamIds[i],
-        teamBId: teamIds[j],
+        teamAId: tA,
+        teamBId: tB,
         status: 'UPCOMING',
       });
+      lastPlayedTeams = new Set([tA, tB]);
       matchNumber++;
     }
-  }
 
-  for (let i = fixtures.length - 1; i > 0; i--) {
-    const k = Math.floor(Math.random() * (i + 1));
-    [fixtures[i], fixtures[k]] = [fixtures[k], fixtures[i]];
+    // Rotate all teams except the first anchor team
+    const fixed = teams[0];
+    const rest = teams.slice(1);
+    rest.unshift(rest.pop()!);
+    teams.splice(0, teams.length, fixed, ...rest);
   }
-  fixtures.forEach((f, idx) => {
-    f.matchNumber = idx + 1;
-  });
 
   return fixtures;
 }

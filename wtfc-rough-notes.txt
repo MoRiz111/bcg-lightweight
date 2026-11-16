@@ -4,10 +4,18 @@ To Do :
 - in team wise player stats for tournaments, only showing overs is fine, no need to show the balls bowled,
   also in the bowling stats, the runs given by bowlers is not shown in team wise stats, but it is shown 
   in individual stats. And remove the ball bowled stat as overs itself covers it.
-- add logos of all the teams (both international and IPL)
+- add logos of all the teams (both international and IPL) (add the official png logos, as copyright is not
+  a problem as I am using it for personal fun and not for commercial use)
 - add toss feature (or randomize who bats first)
 - maintain different international teams for different formats with diff. cap/vc
-- 
+
+- update the proper readme as a guide for the entire game
+- have custom UI changeable between the present one/ EA 2007/ for IPL (have IPL UI)
+- add WTC tournament (with the latest cycle)
+
+
+Commit 5 : 
+Phase 1 : 
 
 
 Commit 4 : 
